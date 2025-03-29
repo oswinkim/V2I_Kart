@@ -61,7 +61,7 @@ class User:
 
         WorldSockets.extend(self.Sockets)
 
-        print(f"test\n {self.SockRecv_UserPc}\ntype:{str(self.SockRecv_UserPc)}")
+#        print(f"test\n {self.SockRecv_UserPc}\ntype:{str(self.SockRecv_UserPc)}")
 
 
 '''
@@ -93,43 +93,48 @@ sockets = [sock_pc2, sock_esp]
 # print("Waiting for key input from PC2 and data from ESP32...")
 
 Dao = User(Name='다오', Priority=1, EspIp="192.168.0.0", EspRecvPort=4210, EspSendPort=4211, PcIp="192.168.0.0", PcRecvPort=5005, PcSendPort=5006)
-#Bazzi = User('배찌')
 
-print(f"[월드 소캣]\n{WorldSockets}")
+macron=[Dao]
 
-print(User.__dict__)
-
+# 우선순위의 정렬
+for i in range(len(macron)):
+    macron[i].Priority = i + 1
 
 while True:
+
     try:
         # select를 사용하여 먼저 오는 데이터 처리
         readable, _, _ = select.select(WorldSockets, [], [])
+
+
 
         for sock in readable:
             data, addr = sock.recvfrom(1024)  # 데이터 수신
             msg = data.decode().strip()
 
-            # PC2에서 온 키 입력 처리
-            if sock == sock_pc2:
-                print(f"Received from PC2: {msg}")
+            for i in range(len(macron)):
 
-                if msg == "o":
-                    sock_esp.sendto("1".encode(), (ESP_IP, ESP_RECV_PORT))  # motor ON
-                    print("Sent to ESP: motor ON")
-                elif msg == "f":
-                    sock_esp.sendto("0".encode(), (ESP_IP, ESP_RECV_PORT))  # motor OFF
-                    print("Sent to ESP: motor OFF")
+                    # PC2에서 온 키 입력 처리
+                if sock == macron[i].SockRecv_UserPc:
+                    print(f"Received from PC2: {msg}")
 
-                # 추가 명령어<추후 데이터 전송용>
-                # elif msg == "t":
-                #     sock_esp.sendto("REQ".encode(), (ESP_IP, ESP_RECV_PORT))  # 온도 요청
-                #     print("Requesting temperature from ESP32...")
+                    if msg == "o":
+                        macron[i].SockSend_esp.sendto("1".encode(), (macron[i].EspIp, macron[i].EspRecvPort))  # motor ON
+                        print("Sent to ESP: motor ON")
+                    elif msg == "f":
+                        macron[i].SockSend_esp.sendto("0".encode(), (macron[i].EspIp, macron[i].EspRecvPort))  # motor OFF
+                        print("Sent to ESP: motor OFF")
 
-            # ESP32에서 온도 데이터 수신 → PC2로 전달
-            elif sock == sock_esp:
-                print(f"Received Temperature from ESP: {msg}°C")
-                sock_pc2_send.sendto(msg.encode(), (PC2_IP, PC2_SEND_PORT))  # PC2로 온도 전송
-                print(f"Sent Temperature to PC2: {msg}°C")
+                    # 추가 명령어<추후 데이터 전송용>
+                    # elif msg == "t":
+                    #     sock_esp.sendto("REQ".encode(), (ESP_IP, ESP_RECV_PORT))  # 온도 요청
+                    #     print("Requesting temperature from ESP32...")
+
+                # ESP32에서 온도 데이터 수신 → PC2로 전달
+                elif sock == macron[i].SockSend_esp:
+                    print(f"Received Temperature from ESP: {msg}°C")
+                    macron[i].SockSend_UserPc.sendto(msg.encode(), (macron[i].PcIp, macron[i].PcSendPort))  # PC2로 온도 전송
+                    print(f"Sent Temperature to PC2: {msg}°C")
 
     except KeyboardInterrupt:
         print("Exiting...")
