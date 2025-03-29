@@ -8,7 +8,7 @@
 
 협업자2 : yminder
 
-기여자1 : 
+기여자1 : Lee Jong Hun
 
 
 
