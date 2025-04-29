@@ -39,11 +39,11 @@ while True:
             if sock == sock_pc2:
                 print(f"Received from PC2: {msg}")
 
-                if msg == "o":
-                    sock_esp.sendto("1".encode(), (ESP_IP, ESP_RECV_PORT))  # motor ON
+                if msg == "1":
+                    sock_esp.sendto(msg.encode(), (ESP_IP, ESP_RECV_PORT))  # motor ON
                     print("Sent to ESP: motor ON")
-                elif msg == "f":
-                    sock_esp.sendto("0".encode(), (ESP_IP, ESP_RECV_PORT))  # motor OFF
+                elif msg == "0":
+                    sock_esp.sendto(msg.encode(), (ESP_IP, ESP_RECV_PORT))  # motor OFF
                     print("Sent to ESP: motor OFF")
 
                 # 추가 명령어<추후 데이터 전송용>

@@ -35,12 +35,12 @@ sock_recv.bind(("", PC2_RECV_PORT))  # 온도 데이터 수신 소켓
 sock_recv.settimeout(0.0)  # Non-blocking 모드 (딜레이 제거)
 
 # 키 입력 상태
-keys = np.array([False] * 4)
-prev_keys = np.array([False] * 4)  # 이전 키 상태 저장
+keys = np.array([False] * 2)
+prev_keys = np.array([False] * 2)  # 이전 키 상태 저장
 ov_color = (220, 200, 20)
 
 prev_keys
-key_map = {'s': 0, 'w': 1, 'a': 2, 'd': 3}
+key_map = {'f': 0, 'o': 1}
 
 # 온도 데이터 수신 함수
 def receive_temperature():
