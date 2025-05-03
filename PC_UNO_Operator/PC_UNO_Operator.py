@@ -97,9 +97,9 @@ while True:
                             print(f"Sent to [{macron[i].Name}]ESP: motor OFF")
 
                         # 추가 명령어<추후 데이터 전송용>
-                        # elif msg == "t":
-                        #     sock_esp.sendto("REQ".encode(), (ESP_IP, ESP_RECV_PORT))  # 온도 요청
-                        #     print("Requesting Random Value from ESP32...")
+                        elif msg == "t":
+                            macron[i].SockSend_esp.sendto("REQ".encode(), (macron[i].EspIp, macron[i].EspRecvPort))  # 온도 요청
+                            print("Requesting Random Value from ESP32...")
 
                     # ESP32에서 온도 데이터 수신 → PC2로 전달
                     elif sock == macron[i].SockSend_esp:
