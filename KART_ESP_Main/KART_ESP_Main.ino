@@ -5,8 +5,8 @@ const char* ssid = "a12";      // WiFi 이름
 const char* password = "12345678";  // WiFi 비밀번호
 
 WiFiUDP udp;
-const unsigned int recvPort = 4210;  // PC1에서 LED 제어 명령을 받을 포트
-const unsigned int sendPort = 4211;  // PC1으로 데이터를 보낼 포트
+const unsigned int recvPort = 4212;  // PC1에서 LED 제어 명령을 받을 포트
+const unsigned int sendPort = 4213;  // PC1으로 데이터를 보낼 포트
 
 IPAddress PC1_IP(192, 168, 137, 205);  // PC1의 IP 주소
 
