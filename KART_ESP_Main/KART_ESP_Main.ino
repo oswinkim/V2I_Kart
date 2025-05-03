@@ -15,6 +15,9 @@ IPAddress PC1_IP(192, 168, 137, 205);  // PC1의 IP 주소
 #define MOTOR_B_IN1 32
 #define MOTOR_B_IN2 33
 
+unsigned long currenttime = 0;
+int randVal = 0;
+
 void setup() {
     Serial.begin(115200);
     WiFi.begin(ssid, password);
@@ -40,12 +43,19 @@ void setup() {
     digitalWrite(MOTOR_B_IN1, LOW);
     digitalWrite(MOTOR_B_IN2, LOW);
 
-
+    randomSeed(millis() % 255);
+    currenttime = millis();
+    randVal = random(0, 255);
 }
 
 void loop() {
     char packetBuffer[255];
     int packetSize = udp.parsePacket();
+    if (millis() - currenttime > 5000){
+        randVal = random(0, 255);
+        currenttime = millis();
+    }
+    
 
     if (packetSize) {
         udp.read(packetBuffer, 255);
@@ -68,18 +78,14 @@ void loop() {
         } 
         // 데이터 전송
         else if (strcmp(packetBuffer, "REQ") == 0) {
-            Serial.printf("NONE_oh");
-            
-            /*  온도 전송 예시
-            float temp = dht.readTemperature();
-            Serial.printf("Sending Temperature: %.2f°C\n", temp);
+            Serial.println("Request receved");
 
-            char tempStr[10];
-            dtostrf(temp, 4, 2, tempStr);  // float → 문자열 변환
+            char tempStr[4];
+            sprintf(tempStr, "%d", randVal);
             udp.beginPacket(PC1_IP, sendPort);
-            udp.write(tempStr);
+            udp.write((const uint8_t*)tempStr, strlen(tempStr));
             udp.endPacket();
-            */
+            Serial.printf("Sending data: %s\n", tempStr);
         }
     }
 }

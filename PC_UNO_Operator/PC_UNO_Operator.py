@@ -62,7 +62,7 @@ class User:
         WorldSockets.extend(self.Sockets)
 
 
-Dao = User(Name='다오', Priority=1, EspIp="192.168.0.0", EspRecvPort=4210, EspSendPort=4211, PcIp="192.168.0.0", PcRecvPort=5005, PcSendPort=5006)
+Dao = User(Name='다오', Priority=1, EspIp="192.168.43.169", EspRecvPort=4210, EspSendPort=4211, PcIp="192.168.137.232", PcRecvPort=5005, PcSendPort=5006)
 # Bazzi = User(Name='배찌', Priority=2, EspIp="192.168.0.0", EspRecvPort=4212, EspSendPort=4213, PcIp="192.168.0.0", PcRecvPort=5007, PcSendPort=5008)
 macron=[Dao]
 
@@ -70,6 +70,7 @@ macron=[Dao]
 for i in range(len(macron)):
     macron[i].Priority = i + 1
 
+print("*정상적으로 연결되지 않을 경우 네트 워크 설정을 확인하십시오.(공용 -> 개인 네트워크)")
 print("Waiting for key input from PC2 and data from ESP32...")
 
 while True:
@@ -88,22 +89,22 @@ while True:
                     if sock == macron[i].SockRecv_UserPc:
                         print(f"Received from [{macron[i].Name}]PC: {msg}")
 
-                        if msg == "o":
+                        if msg == "1":
                             macron[i].SockSend_esp.sendto("1".encode(), (macron[i].EspIp, macron[i].EspRecvPort))  # motor ON
                             print(f"Sent to [{macron[i].Name}]ESP: motor ON")
 
-                        elif msg == "f":
+                        elif msg == "0":
                             macron[i].SockSend_esp.sendto("0".encode(), (macron[i].EspIp, macron[i].EspRecvPort))  # motor OFF
                             print(f"Sent to [{macron[i].Name}]ESP: motor OFF")
 
-                        # 추가 명령어<추후 데이터 전송용>
-                        # elif msg == "t":
-                        #     sock_esp.sendto("REQ".encode(), (ESP_IP, ESP_RECV_PORT))  # 온도 요청
-                        #     print("Requesting Random Value from ESP32...")
+                        # 추후 데이터 전송 명령어
+                        elif msg == "2":
+                            macron[i].SockSend_esp.sendto("REQ".encode(), (macron[i].EspIp, macron[i].EspRecvPort))  # 온도 요청
+                            print("랜덤값을 요청하는중...")
 
                     # ESP32에서 온도 데이터 수신 → PC2로 전달
                     elif sock == macron[i].SockSend_esp:
-                        print(f"Received Random Value from [{macron[i].Name}]ESP: {msg}")
+                        print(f"\nReceived Random Value from [{macron[i].Name}]ESP: {msg}")
                         macron[i].SockSend_UserPc.sendto(msg.encode(), (macron[i].PcIp, macron[i].PcSendPort))  # PC2로 온도 전송
                         print(f"Sent Random Value to PC2: {msg}")
                 except:
@@ -111,4 +112,7 @@ while True:
 
     except KeyboardInterrupt:
         print("Exiting...")
+        for sock in WorldSockets:
+            sock.close()
+            print(sock)
         break
