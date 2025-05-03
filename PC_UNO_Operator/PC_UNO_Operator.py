@@ -62,7 +62,6 @@ class User:
         WorldSockets.extend(self.Sockets)
 
 
-
 Dao = User(Name='다오', Priority=1, EspIp="192.168.0.0", EspRecvPort=4210, EspSendPort=4211, PcIp="192.168.0.0", PcRecvPort=5005, PcSendPort=5006)
 # Bazzi = User(Name='배찌', Priority=2, EspIp="192.168.0.0", EspRecvPort=4212, EspSendPort=4213, PcIp="192.168.0.0", PcRecvPort=5007, PcSendPort=5008)
 macron=[Dao]
@@ -100,13 +99,13 @@ while True:
                         # 추가 명령어<추후 데이터 전송용>
                         # elif msg == "t":
                         #     sock_esp.sendto("REQ".encode(), (ESP_IP, ESP_RECV_PORT))  # 온도 요청
-                        #     print("Requesting temperature from ESP32...")
+                        #     print("Requesting Random Value from ESP32...")
 
                     # ESP32에서 온도 데이터 수신 → PC2로 전달
                     elif sock == macron[i].SockSend_esp:
-                        print(f"Received Temperature from [{macron[i].Name}]ESP: {msg}°C")
+                        print(f"Received Random Value from [{macron[i].Name}]ESP: {msg}")
                         macron[i].SockSend_UserPc.sendto(msg.encode(), (macron[i].PcIp, macron[i].PcSendPort))  # PC2로 온도 전송
-                        print(f"Sent Temperature to PC2: {msg}°C")
+                        print(f"Sent Random Value to PC2: {msg}")
                 except:
                     pass
 
