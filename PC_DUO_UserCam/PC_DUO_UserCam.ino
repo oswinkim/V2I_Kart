@@ -1,200 +1,126 @@
 #include "esp_camera.h"
 #include <WiFi.h>
-#include <WiFiUdp.h>
-#include <Arduino.h>
+#include "camera_pins.h"
+#define CAMERA_MODEL_AI_THINKER // Has PSRAM
 
-#define ONBOARD_LED 4
-#define CHUNK_LENGTH 1024  // 최적화된 UDP 패킷 크기 (MTU 크기에 맞게 조정)
+// Enter your WiFi credentials
+const char *ssid = "a12";
+const char *password = "12345678";
 
-// 기본 Wi-Fi 설정
-char ssid[32] = "a12";           // 기본 Wi-Fi SSID
-char password[32] = "12345678";  // 기본 Wi-Fi 비밀번호
-
-// UDP 서버 설정
-char udpAddress[16] = "192.168.137.55";  // PC의 로컬 IP 주소
-int udpPort = 4222;                    // UDP 서버 포트
-
-WiFiUDP udp;
-
-// 카메라 설정 초기화
-camera_config_t config;
-
-void connecteWIFI() {
-  WiFi.mode(WIFI_STA);               // 스테이션 모드 설정
-  WiFi.setHostname("ESP32CAM_001");  // 호스트네임 설정
-  WiFi.begin(ssid, password);
-
-  unsigned long startAttemptTime = millis();
-
-  while (WiFi.status() != WL_CONNECTED) {
-    if (millis() - startAttemptTime >= 10000) {
-      Serial.println("WiFi connection failed!");
-      return;
-    }
-    delay(500);
-    Serial.print(".");
-  }
-
-  Serial.println("\nWiFi connected!");
-  Serial.print("ESP32 IP Address: ");
-  Serial.println(WiFi.localIP());
-}
-
-void connectCAM() {
-  // 카메라 설정
-  config.ledc_channel = LEDC_CHANNEL_0;
-  config.ledc_timer = LEDC_TIMER_0;
-  config.pin_d0 = 5;
-  config.pin_d1 = 18;
-  config.pin_d2 = 19;
-  config.pin_d3 = 21;
-  config.pin_d4 = 36;
-  config.pin_d5 = 39;
-  config.pin_d6 = 34;
-  config.pin_d7 = 35;
-  config.pin_xclk = 0;
-  config.pin_pclk = 22;
-  config.pin_vsync = 25;
-  config.pin_href = 23;
-  config.pin_sccb_sda = 26;
-  config.pin_sccb_scl = 27;
-  config.pin_pwdn = 32;
-  config.pin_reset = -1;
-  config.xclk_freq_hz = 20000000;
-
-  config.pixel_format = PIXFORMAT_JPEG;
-  config.frame_size = FRAMESIZE_QVGA;  // 해상도: 320x240
-  config.jpeg_quality = 10;            // JPEG 품질 (0: 최고 화질, 63: 최저 화질)
-  config.fb_count = 2;
-
-  // 카메라 초기화
-  esp_err_t err = esp_camera_init(&config);
-  if (err != ESP_OK) {
-    Serial.println("Camera init failed!");
-    return;
-  }
-}
+void startCameraServer();
+void setupLedFlash(int pin);
 
 void setup() {
   Serial.begin(115200);
-  pinMode(ONBOARD_LED, OUTPUT);  // 내장 LED 핀 설정
-  connecteWIFI();
-  udp.begin(udpPort);  // UDP 시작
-  connectCAM();
-  
-  // 기본 설정 출력
-  Serial.println("ESP32CAM Ready.");
-  Serial.println("You can modify the following parameters:");
-  Serial.println("1. SSID (Wi-Fi)");
-  Serial.println("2. Password (Wi-Fi)");
-  Serial.println("3. UDP Server Address");
-  Serial.println("4. UDP Server Port");
-  Serial.println("5. Camera Settings (Quality, Frame Size, etc.)");
-}
+  Serial.setDebugOutput(true);
+  Serial.println();
+  //카메라 설정
+  camera_config_t config;
+  config.ledc_channel = LEDC_CHANNEL_0;
+  config.ledc_timer = LEDC_TIMER_0;
+  config.pin_d0 = Y2_GPIO_NUM;
+  config.pin_d1 = Y3_GPIO_NUM;
+  config.pin_d2 = Y4_GPIO_NUM;
+  config.pin_d3 = Y5_GPIO_NUM;
+  config.pin_d4 = Y6_GPIO_NUM;
+  config.pin_d5 = Y7_GPIO_NUM;
+  config.pin_d6 = Y8_GPIO_NUM;
+  config.pin_d7 = Y9_GPIO_NUM;
+  config.pin_xclk = XCLK_GPIO_NUM;
+  config.pin_pclk = PCLK_GPIO_NUM;
+  config.pin_vsync = VSYNC_GPIO_NUM;
+  config.pin_href = HREF_GPIO_NUM;
+  config.pin_sccb_sda = SIOD_GPIO_NUM;
+  config.pin_sccb_scl = SIOC_GPIO_NUM;
+  config.pin_pwdn = PWDN_GPIO_NUM;
+  config.pin_reset = RESET_GPIO_NUM;
+  config.xclk_freq_hz = 20000000;
+  //캡처 설정
+  config.frame_size = FRAMESIZE_QVGA;
+  config.pixel_format = PIXFORMAT_JPEG;  // for streaming
+  //config.pixel_format = PIXFORMAT_RGB565; // for face detection/recognition
+  config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
+  config.fb_location = CAMERA_FB_IN_PSRAM;
+  config.jpeg_quality = 12;
+  config.fb_count = 2;
 
-void loop() {
-  // 사용자 입력 대기
-  if (Serial.available()) {
-    String input = Serial.readString().trim();
-    
-    if (input.startsWith("ssid")) {
-      input.replace("ssid", "");
-      
-
-      input.toCharArray(ssid, input.substring(4).length() + 1);
-      Serial.print("New SSID: ");
-      Serial.println(ssid);
-      WiFi.disconnect();
-      WiFi.begin(ssid, password);  // 새로운 Wi-Fi 연결
+  // if PSRAM IC present, init with UXGA resolution and higher JPEG quality
+  //                      for larger pre-allocated frame buffer.
+  if (config.pixel_format == PIXFORMAT_JPEG) {
+    if (psramFound()) {
+      config.jpeg_quality = 10;
+      config.fb_count = 2;
+      config.grab_mode = CAMERA_GRAB_LATEST;
+    } else {
+      // Limit the frame size when PSRAM is not available
+      config.frame_size = FRAMESIZE_SVGA;
+      config.fb_location = CAMERA_FB_IN_DRAM;
     }
-
-    if (input.startsWith("pass")) {
-      input.replace("pass", "");
-      input.trim();
-      input.toCharArray(password, input.length() + 1);
-      Serial.print("New Password: ");
-      Serial.println(password);
-      WiFi.disconnect();
-      WiFi.begin(ssid, password);  // 새로운 비밀번호로 연결
-    }
-
-    if (input.startsWith("ip")) {
-      input.replace("ip", "");
-      input.trim();
-      input.toCharArray(udpAddress, input.length() + 1);
-      Serial.print("New UDP Server ip: ");
-      Serial.println(udpAddress);
-    }
-
-    if (input.startsWith("port")) {
-      input.replace("port", "");
-      input.trim();
-      udpPort = input.toInt();
-      Serial.print("New UDP Server Port: ");
-      Serial.println(udpPort);
-    }
-
-    if (input.startsWith("qual")) {
-      input.replace("qual", "");
-      input.trim();
-      config.jpeg_quality = input.toInt();
-      Serial.print("New Camera Quality: ");
-      Serial.println(config.jpeg_quality);
-    }
-
-    if (input.startsWith("size")) {
-      input.replace("size", "");
-      input.trim();
-      if (input == "QVGA") {
-        config.frame_size = FRAMESIZE_QVGA;  // 320x240
-      } else if (input == "VGA") {
-        config.frame_size = FRAMESIZE_VGA;  // 640x480
-      } else {
-        Serial.println("Unknown frame size");
-        return;
-      }
-      Serial.print("New Camera Frame Size: ");
-      Serial.println(input);
-    }
-
-    if (input.startsWith("led")) {
-      digitalWrite(ONBOARD_LED, !digitalRead(ONBOARD_LED));  // LED 토글
-      Serial.println("Toggled LED");
-    }
-
-    // Wi-Fi 재연결
-    if (WiFi.status() != WL_CONNECTED) {
-      connecteWIFI();
-    }
+  } else {
+    // Best option for face detection/recognition
+    config.frame_size = FRAMESIZE_240X240;
+#if CONFIG_IDF_TARGET_ESP32S3
+    config.fb_count = 2;
+#endif
   }
 
-  // 카메라에서 프레임 캡처
-  camera_fb_t* fb = esp_camera_fb_get();  // 이미지 캡처
-  if (!fb) {
-    Serial.println("Camera capture failed!");
+#if defined(CAMERA_MODEL_ESP_EYE)
+  pinMode(13, INPUT_PULLUP);
+  pinMode(14, INPUT_PULLUP);
+#endif
+
+  // camera init
+  esp_err_t err = esp_camera_init(&config);
+  if (err != ESP_OK) {
+    Serial.printf("Camera init failed with error 0x%x", err);
     return;
   }
 
-  // 메모리 관리 - 불필요한 메모리 해제
-  sendPacketData(fb->buf, fb->len);  // UDP 전송
-  esp_camera_fb_return(fb);          // 메모리 반환
+  sensor_t *s = esp_camera_sensor_get();
+  // initial sensors are flipped vertically and colors are a bit saturated
+  if (s->id.PID == OV3660_PID) {
+    s->set_vflip(s, 1);        // flip it back
+    s->set_brightness(s, 1);   // up the brightness just a bit
+    s->set_saturation(s, -2);  // lower the saturation
+  }
+  // drop down frame size for higher initial frame rate
+  if (config.pixel_format == PIXFORMAT_JPEG) {
+    s->set_framesize(s, FRAMESIZE_QVGA);
+  }
+
+#if defined(CAMERA_MODEL_M5STACK_WIDE) || defined(CAMERA_MODEL_M5STACK_ESP32CAM)
+  s->set_vflip(s, 1);
+  s->set_hmirror(s, 1);
+#endif
+
+#if defined(CAMERA_MODEL_ESP32S3_EYE)
+  s->set_vflip(s, 1);
+#endif
+
+// Setup LED FLash if LED pin is defined in camera_pins.h
+#if defined(LED_GPIO_NUM)
+  setupLedFlash(LED_GPIO_NUM);
+#endif
+
+  WiFi.begin(ssid, password);
+  WiFi.setSleep(false);
+
+  Serial.print("WiFi connecting");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("");
+  Serial.println("WiFi connected");
+
+  startCameraServer();
+
+  Serial.print("Camera Ready! Use 'http://");
+  Serial.print(WiFi.localIP());
+  Serial.println("' to connect");
 }
 
-void sendPacketData(const uint8_t* buf, size_t len) {
-  size_t chunks = len / CHUNK_LENGTH;
-  size_t remaining = len % CHUNK_LENGTH;
-
-  for (size_t i = 0; i < chunks; i++) {
-    // UDP 패킷 전송
-    udp.beginPacket(udpAddress, udpPort);
-    udp.write(buf + (i * CHUNK_LENGTH), CHUNK_LENGTH);
-    udp.endPacket();
-  }
-
-  if (remaining > 0) {
-    // 남은 데이터 전송
-    udp.beginPacket(udpAddress, udpPort);
-    udp.write(buf + (len - remaining), remaining);
-    udp.endPacket();
-  }
+void loop() {
+  // Do nothing. Everything is done in another task by the web server
+  delay(10000);
 }
