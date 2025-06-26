@@ -12,10 +12,10 @@ const char* ssid = "a12";      // WiFi 이름
 const char* password = "12345678";  // WiFi 비밀번호
 
 WiFiUDP udp;
-const unsigned int recvPort = 4212;  // PC1에서 LED 제어 명령을 받을 포트
+const unsigned int recvPort = 4212;  // PC1에서 제어 명령을 받을 포트
 const unsigned int sendPort = 4213;  // PC1으로 데이터를 보낼 포트
 
-IPAddress PC1_IP(192, 168, 137, 205);  // PC1의 IP 주소
+IPAddress PC1_IP(192, 168, 191, 53);  // PC1의 IP 주소
 
 #define MOTOR_A_IN1 25  // PWM핀
 #define MOTOR_A_IN2 26
@@ -26,7 +26,9 @@ unsigned long currenttime = 0;
 int randVal = 0;
 
 void setup() {
-    Serial.begin(115200);
+    Serial.begin(9600);
+    AHRS_Serial.begin(115200, SERIAL_8N1, 34, -1);
+
     WiFi.begin(ssid, password);
 
     Serial.println("Connecting to WiFi...start");
@@ -76,6 +78,9 @@ void loop() {
         Pitch = inString.substring(index2 + 1, index3).toFloat();
         Yaw = inString.substring(index3 + 1, index4).toFloat();
         
+        Serial.print("  Yaw: ");
+        Serial.println(Yaw, 2);
+
         }
     }
     if (packetSize) {
@@ -129,7 +134,7 @@ void loop() {
 
             Serial.println("BACKWARD");
         } 
-        else if (strcmp(packetBuffer, "1") == 0) {
+        else if (strcmp(packetBuffer, "i") == 0) {
             digitalWrite(MOTOR_A_IN1, LOW);
             digitalWrite(MOTOR_A_IN2, LOW);
             digitalWrite(MOTOR_B_IN1, LOW);
@@ -139,11 +144,12 @@ void loop() {
         }
 
         // 데이터 전송
-        else if (strcmp(packetBuffer, "Ahrs") == 0) {
+        else if (strcmp(packetBuffer, "ahrs") == 0) {
             Serial.println("Request received");
 
             // [ahrs] 형식의 문자열 만들기
-            String msg = "[ahrs]" + String(Roll, 2) + "," + String(Pitch, 2) + "," + String(Yaw, 2);
+            // String msg = "[ahrs]" + String(Roll, 2) + "," + String(Pitch, 2) + "," + String(Yaw, 2);
+            String msg = "[ahrs]" + String(Yaw, 2);
 
             // String을 C 문자열(char 배열)로 변환
             char msgBuffer[64];
@@ -183,3 +189,4 @@ void loop() {
 PC1(서버컴): 망우 17번
 PC2(이용자): 망우 16번
 공유기:사마의 �
+*/
