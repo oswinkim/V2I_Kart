@@ -1,14 +1,21 @@
 #include <WiFi.h>
 #include <WiFiUdp.h>
+#include "HardwareSerial.h"     //ahrs
+
+HardwareSerial AHRS_Serial(2);  // UART2 객체 생성  ahrs
+
+float Roll = 0;     //ahrs
+float Pitch = 0;     //ahrs
+float Yaw = 0;     //ahrs
 
 const char* ssid = "a12";      // WiFi 이름
 const char* password = "12345678";  // WiFi 비밀번호
 
 WiFiUDP udp;
-const unsigned int recvPort = 4212;  // PC1에서 LED 제어 명령을 받을 포트
+const unsigned int recvPort = 4212;  // PC1에서 제어 명령을 받을 포트
 const unsigned int sendPort = 4213;  // PC1으로 데이터를 보낼 포트
 
-IPAddress PC1_IP(192, 168, 137, 205);  // PC1의 IP 주소
+IPAddress PC1_IP(192, 168, 191, 53);  // PC1의 IP 주소
 
 #define MOTOR_A_IN1 25  // PWM핀
 #define MOTOR_A_IN2 26
@@ -19,7 +26,9 @@ unsigned long currenttime = 0;
 int randVal = 0;
 
 void setup() {
-    Serial.begin(115200);
+    Serial.begin(9600);
+    AHRS_Serial.begin(115200, SERIAL_8N1, 34, -1);
+
     WiFi.begin(ssid, password);
 
     Serial.println("Connecting to WiFi...start");
@@ -55,8 +64,25 @@ void loop() {
         randVal = random(0, 255);
         currenttime = millis();
     }
-    
 
+    if (AHRS_Serial.available()) {
+        String inString = AHRS_Serial.readStringUntil('\n'); 
+
+        int index1 = inString.indexOf(','); 
+        int index2 = inString.indexOf(',', index1 + 1);
+        int index3 = inString.indexOf(',', index2 + 1);
+        int index4 = inString.length();
+
+        if (index1 > 0 && index2 > index1 && index3 > index2) {
+        Roll = inString.substring(index1 + 1, index2).toFloat();
+        Pitch = inString.substring(index2 + 1, index3).toFloat();
+        Yaw = inString.substring(index3 + 1, index4).toFloat();
+        
+        Serial.print("  Yaw: ");
+        Serial.println(Yaw, 2);
+
+        }
+    }
     if (packetSize) {
         udp.read(packetBuffer, 255);
         packetBuffer[packetSize] = '\0';  // 문자열 종료
@@ -64,34 +90,103 @@ void loop() {
         Serial.println(packetBuffer);
 
         // 모터 제어
-        if (strcmp(packetBuffer, "1") == 0) {
+        if (strcmp(packetBuffer, "w") == 0) {
+            digitalWrite(MOTOR_A_IN1, LOW);
+            digitalWrite(MOTOR_A_IN2, LOW);
+            digitalWrite(MOTOR_B_IN1, LOW);
+            digitalWrite(MOTOR_B_IN2, LOW);
+
             digitalWrite(MOTOR_A_IN1, HIGH);
             digitalWrite(MOTOR_B_IN1, HIGH);
 
-            Serial.println("MORTOR ON");
-        } 
-        else if (strcmp(packetBuffer, "0") == 0) {
+            Serial.println("FORWARD");
+        }
+        else if (strcmp(packetBuffer, "a") == 0) {
             digitalWrite(MOTOR_A_IN1, LOW);
+            digitalWrite(MOTOR_A_IN2, LOW);
             digitalWrite(MOTOR_B_IN1, LOW);
+            digitalWrite(MOTOR_B_IN2, LOW);
+            
+            digitalWrite(MOTOR_A_IN1, HIGH);
+            digitalWrite(MOTOR_B_IN2, HIGH); 
+
+            Serial.println("LEFT");
+        }
+        else if (strcmp(packetBuffer, "d") == 0) {
+            digitalWrite(MOTOR_A_IN1, LOW);
+            digitalWrite(MOTOR_A_IN2, LOW);
+            digitalWrite(MOTOR_B_IN1, LOW);
+            digitalWrite(MOTOR_B_IN2, LOW);
+            
+            digitalWrite(MOTOR_A_IN2, HIGH);
+            digitalWrite(MOTOR_B_IN1, HIGH);
+
+            Serial.println("RIGHT");
+        }
+        else if (strcmp(packetBuffer, "s") == 0) {
+            digitalWrite(MOTOR_A_IN1, LOW);
+            digitalWrite(MOTOR_A_IN2, LOW);
+            digitalWrite(MOTOR_B_IN1, LOW);
+            digitalWrite(MOTOR_B_IN2, LOW);
+
+            digitalWrite(MOTOR_A_IN2, HIGH);
+            digitalWrite(MOTOR_B_IN2, HIGH);
+
+            Serial.println("BACKWARD");
+        } 
+        else if (strcmp(packetBuffer, "i") == 0) {
+            digitalWrite(MOTOR_A_IN1, LOW);
+            digitalWrite(MOTOR_A_IN2, LOW);
+            digitalWrite(MOTOR_B_IN1, LOW);
+            digitalWrite(MOTOR_B_IN2, LOW);
 
             Serial.println("MORTOR OFF");
-        } 
-        // 데이터 전송
-        else if (strcmp(packetBuffer, "REQ") == 0) {
-            Serial.println("Request receved");
-
-            char tempStr[4];
-            sprintf(tempStr, "%d", randVal);
-            udp.beginPacket(PC1_IP, sendPort);
-            udp.write((const uint8_t*)tempStr, strlen(tempStr));
-            udp.endPacket();
-            Serial.printf("Sending data: %s\n", tempStr);
         }
+
+        // 데이터 전송
+        else if (strcmp(packetBuffer, "ahrs") == 0) {
+            Serial.println("Request received");
+
+            // [ahrs] 형식의 문자열 만들기
+            // String msg = "[ahrs]" + String(Roll, 2) + "," + String(Pitch, 2) + "," + String(Yaw, 2);
+            String msg = "[ahrs]" + String(Yaw, 2);
+
+            // String을 C 문자열(char 배열)로 변환
+            char msgBuffer[64];
+            msg.toCharArray(msgBuffer, sizeof(msgBuffer));
+
+            // UDP로 전송
+            udp.beginPacket(PC1_IP, sendPort);
+            udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
+            udp.endPacket();
+
+            // 시리얼 출력
+            Serial.printf("Sending data: %s\n", msgBuffer);
+        }
+
+        // else if (strcmp(packetBuffer, "Color") == 0) {
+        //     Serial.println("Request received");
+
+        //     // [ahrs] 형식의 문자열 만들기
+        //     String msg = "[ahrs]" + String(Roll, 2) + "," + String(Pitch, 2) + "," + String(Yaw, 2);
+
+        //     // String을 C 문자열(char 배열)로 변환
+        //     char msgBuffer[64];
+        //     msg.toCharArray(msgBuffer, sizeof(msgBuffer));
+
+        //     // UDP로 전송
+        //     udp.beginPacket(PC1_IP, sendPort);
+        //     udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
+        //     udp.endPacket();
+
+        //     // 시리얼 출력
+        //     Serial.printf("Sending data: %s\n", msgBuffer);
+        // }
     }
 }
 
 /*
 PC1(서버컴): 망우 17번
 PC2(이용자): 망우 16번
-공유기:사마의 촉빠 휴대폰 핫스팟
+공유기:사마의 �
 */
