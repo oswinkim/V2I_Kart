@@ -1,6 +1,7 @@
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include "HardwareSerial.h"     //ahrs
+#include "Adafruit_TCS34725.h" 
 
 HardwareSerial AHRS_Serial(2);  // UART2 객체 생성  ahrs
 
@@ -15,15 +16,19 @@ WiFiUDP udp;
 const unsigned int recvPort = 4212;  // PC1에서 제어 명령을 받을 포트
 const unsigned int sendPort = 4213;  // PC1으로 데이터를 보낼 포트
 
-IPAddress PC1_IP(192, 168, 191, 53);  // PC1의 IP 주소
+IPAddress PC1_IP(192, 168, 0, 8);  // PC1의 IP 주소
 
 #define MOTOR_A_IN1 25  // PWM핀
 #define MOTOR_A_IN2 26
 #define MOTOR_B_IN1 32
 #define MOTOR_B_IN2 33
+#define I2C_SDA 13
+#define I2C_SCL 27
 
 unsigned long currenttime = 0;
 int randVal = 0;
+
+Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS34725_GAIN_1X);
 
 void setup() {
     Serial.begin(9600);
@@ -55,6 +60,15 @@ void setup() {
     randomSeed(millis() % 255);
     currenttime = millis();
     randVal = random(0, 255);
+
+    Wire.begin(I2C_SDA, I2C_SCL);
+
+    if (tcs.begin()) {
+        Serial.println("Found sensor");
+    } else {
+        Serial.println("No TCS34725 found ... check your connections");
+        while (1);
+    }
 }
 
 void loop() {
@@ -78,8 +92,7 @@ void loop() {
         Pitch = inString.substring(index2 + 1, index3).toFloat();
         Yaw = inString.substring(index3 + 1, index4).toFloat();
         
-        Serial.print("  Yaw: ");
-        Serial.println(Yaw, 2);
+
 
         }
     }
@@ -164,24 +177,28 @@ void loop() {
             Serial.printf("Sending data: %s\n", msgBuffer);
         }
 
-        // else if (strcmp(packetBuffer, "Color") == 0) {
-        //     Serial.println("Request received");
+        else if (strcmp(packetBuffer, "Color") == 0) {
+            Serial.println("Request received");
+        
+            uint16_t r, g, b, c;
+            tcs.getRawData(&r, &g, &b, &c);      
+        
+            // [ahrs] 형식의 문자열 만들기
+            String msg = "[Color]" + String(r) + "," + String(g) + "," + String(b);
+            
+           
+            // String을 C 문자열(char 배열)로 변환
+            char msgBuffer[64];
+            msg.toCharArray(msgBuffer, sizeof(msgBuffer));
 
-        //     // [ahrs] 형식의 문자열 만들기
-        //     String msg = "[ahrs]" + String(Roll, 2) + "," + String(Pitch, 2) + "," + String(Yaw, 2);
+            // UDP로 전송
+            udp.beginPacket(PC1_IP, sendPort);
+            udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
+            udp.endPacket();
 
-        //     // String을 C 문자열(char 배열)로 변환
-        //     char msgBuffer[64];
-        //     msg.toCharArray(msgBuffer, sizeof(msgBuffer));
-
-        //     // UDP로 전송
-        //     udp.beginPacket(PC1_IP, sendPort);
-        //     udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
-        //     udp.endPacket();
-
-        //     // 시리얼 출력
-        //     Serial.printf("Sending data: %s\n", msgBuffer);
-        // }
+            // 시리얼 출력
+            Serial.printf("Sending data: %s\n", msgBuffer);
+        }
     }
 }
 
