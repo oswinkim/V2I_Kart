@@ -1,3 +1,5 @@
+##########################################################################################################
+#불러오는 모듈
 import socket
 import select
 import pandas as pd
@@ -5,8 +7,8 @@ import csv
 import time
 import random as r
 
-WorldSockets=[]
-keys_move=["w","a","s","d"]
+##########################################################################################################
+#클래스
 
 class Common:
     num = 0
@@ -64,7 +66,8 @@ class kart(Common):
             Name = input("카트의 이름이 설정되지 않았습니다.ex) 코튼: ")
         self.Name=Name
 #        print(f"카트 이름: {self.Name}")
-
+        
+        self.AHRS_start = 0
         self.AHRS= 0
         self.color=""
 
@@ -100,7 +103,9 @@ class User:
         self.User_Name = User_Name
 #        print(f"유저 이름: {self.User_Name}\n")
 
-        self.driving_record = [["구간", "현재시간", "컬러변환값", "방향변환값", "모터상태", "raw컬러값", "raw방향값"],]
+        self.driving_record = [["구간", "현재시간", "컬러변환값", "모터상태", "방향변환값",  "raw컬러값", "raw방향값"],]
+
+        self.stopline = 0
 
         self.kart = kart(Name_kart, Ip_kart, Send_port_kart, Rev_port_kart)
         self.player = Player(Name_player, Ip_player, Send_port_player, Rev_port_player)
@@ -109,6 +114,8 @@ class User:
 #        print("-----------------------------")
 
 ##########################################################################################################
+#함수
+
 def send(target, msg):
     target.socket.sendto(msg.encode(), (target.Ip, target.Rev_port))
     print(f"{target.Name}에게 {msg}를 보냈습니다.")
@@ -118,7 +125,7 @@ def sends(t:list, msg):
         target.socket.sendto(msg.encode(), (target.Ip, target.Rev_port))
         print(f"{target.Name}에게 {msg}를 보냈습니다.")
 
-def csv_save(MACRON:list):
+def csv_file_save(MACRON:list):
     for i in range(len(MACRON)):
         if (MACRON[i].Type == "User"):
             file_path= MACRON[i].User_Name + ".csv"
@@ -199,7 +206,7 @@ def connecting(M:list):
                         try:
                             msg = float(msg)
                             if abs(msg) > 0:
-                                M[i].kart.AHRS = msg
+                                M[i].kart.AHRS_start = msg
                                 print("AHRS 정상 작동")
                                 print(f"작동값:{msg}")
                                 break
@@ -270,30 +277,41 @@ def player2kart(U, msg):
     elif msg == "i":
         U.kart.socket.sendto("i".encode(), (U.kart.Ip, U.kart.Rev_port))  # motor OFF
         print(f"Sent to [{U.kart.Name}]ESP: motor OFF")
-    elif msg == "m":
-        U.kart.socket.sendto("ahrs".encode(), (U.kart.Ip, U.kart.Rev_port))  # ahrs값
-        print("ahrs값을 요청하는중...")
-    elif msg == "c":
-        U.kart.socket.sendto("Color".encode(), (U.kart.Ip, U.kart.Rev_port))  # ahrs값
-        print("color값을 요청하는중...")
+    # elif msg == "m":
+    #     U.kart.socket.sendto("ahrs".encode(), (U.kart.Ip, U.kart.Rev_port))  # ahrs값
+    #     print("ahrs값을 요청하는중...")
+    # elif msg == "c":
+    #     U.kart.socket.sendto("Color".encode(), (U.kart.Ip, U.kart.Rev_port))  # ahrs값
+    #     print("color값을 요청하는중...")
     else:
         print(f"undefine key value: {msg}")
 
 def kart2player(U,msg):
 #    print(f"\nReceived from [{U.kart.Name}]ESP: {msg}")
 
-    if "[ahrs]" in msg:
-        msg=msg[6:]
-        U.player.socket.sendto(msg.encode(), (U.player.Ip, U.player.Rev_port))  
-#        print(f"Sent ahrs Value to PC2: {msg}")
-        U.kart.AHRS = msg
-    elif "[color]" in msg:
-        msg=msg[7:]
-        U.player.socket.sendto(msg.encode(), (U.player.Ip, U.player.Rev_port))  
-#        print(f"Sent color Value to PC2: {msg}")
-        Dao.kart.color = msg
+#     if "[ahrs]" in msg:
+#         msg=msg[6:]
+#         U.player.socket.sendto(msg.encode(), (U.player.Ip, U.player.Rev_port))  
+# #        print(f"Sent ahrs Value to PC2: {msg}")
+#         U.kart.AHRS = msg
+#     elif "[color]" in msg:
+#         msg=msg[7:]
+#         U.player.socket.sendto(msg.encode(), (U.player.Ip, U.player.Rev_port))  
+# #        print(f"Sent color Value to PC2: {msg}")
+#         Dao.kart.color = msg
+
+    MSG = msg.split('|')
+#원상형태["구간", "시간", "컬러변환값", "모터상태", "AHRS", "컬러R", "컬러G", "컬러B"]
+#최종형태["구간", "현재시간", "컬러변환값", "모터상태", "방향변환값", "raw컬러값", "raw방향값"]
+    
+    histo=[MSG[0], MSG[1], MSG[2], MSG[3], MSG[4]-U.kart.AHRS_start, MSG[5]+','+MSG[6]+','+MSG[7], MSG[4]]
+    Dao.driving_record.append(histo)
 
 ##########################################################################################################
+#실행 시 변경해야 할 부분
+
+WorldSockets=[]
+keys_move=["w","a","s","d"]
 
 Dao = User(
         User_Name="almaeng",
@@ -309,7 +327,17 @@ Bazzi = User(
     )
 """
 
+#통신하는 모든 객체들
 macron=[Dao]
+
+##########################################################################################################
+#동작부분
+
+#user분리
+user_list=[]
+for i in macron:
+    if i.Type == "User":
+        user_list.append(i)
 
 print("*정상적으로 연결되지 않을 경우 네트 워크 설정을 확인하십시오.(공용 -> 개인 네트워크)")
 print("Waiting for key input from Player and data from Kart...")
@@ -325,23 +353,29 @@ while True:
             data, addr = sock.recvfrom(1024)  # 데이터 수신
             msg = data.decode().strip()
 
-
-
             for i in range(len(macron)):
                 try:
-                    # player에서 온 키 입력 처리
-                    if sock == macron[i].player.socket:
-                        player2kart(macron[i], msg)
-                    # kart에서 온 데이터 처리
-                    elif sock == macron[i].kart.socket:
-                        kart2player(macron[i], msg)
+                    if (macron[i].Type == "User"):
+                        # player에서 온 키 입력 처리
+                        if sock == macron[i].player.socket:
+                            player2kart(macron[i], msg)
+                        # kart에서 온 데이터 처리
+                        elif sock == macron[i].kart.socket:
+                            kart2player(macron[i], msg)
+
+                    elif (macron[i].Type == "Infra"):
+                        # infra에서 온 데이터 처리
+                        if sock == macron[i].socket:
+                            send(macron[i],msg)
+
                 except:
-                    print("데이터 에러!!!!!!!!!!!!!!!")
+                    print("ERROR:데이터가공 오류!")
                     print(f"ERROR:{msg}")
                     pass
 
     except KeyboardInterrupt:
         print("Exiting...")
+        csv_file_save(macron)
         for sock in WorldSockets:
             sock.close()
             print(sock)
