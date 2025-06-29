@@ -3,13 +3,10 @@ import select
 import pandas as pd
 import csv
 import time
+import random as r
 
 WorldSockets=[]
 keys_move=["w","a","s","d"]
-
-csv_file = "kart_log.csv"
-
-
 
 class Common:
     num = 0
@@ -68,7 +65,7 @@ class kart(Common):
         self.Name=Name
 #        print(f"카트 이름: {self.Name}")
 
-        self.AHRS=""
+        self.AHRS= 0
         self.color=""
 
         super().__init__(Ip, Send_port, Rev_port)
@@ -112,6 +109,14 @@ class User:
 #        print("-----------------------------")
 
 ##########################################################################################################
+def send(target, msg):
+    target.socket.sendto(msg.encode(), (target.Ip, target.Rev_port))
+    print(f"{target.Name}에게 {msg}를 보냈습니다.")
+
+def sends(t:list, msg):
+    for target in t:
+        target.socket.sendto(msg.encode(), (target.Ip, target.Rev_port))
+        print(f"{target.Name}에게 {msg}를 보냈습니다.")
 
 def csv_save(MACRON:list):
     for i in range(len(MACRON)):
@@ -133,8 +138,131 @@ def csv_save(MACRON:list):
                 for row in MACRON[i].driving_record:
                     writer.writerow(row)  # 각 행 쓰기
 
+def connecting(M:list):
+    num = r.randrange(10,100)
+    
+    for i in range(len(M)):
+        if (M[i].Type == "User"):
+            print(f"[{M[i].User_Name}과 연결 시작]")
+
+            #플레이어 연결
+            print(f"\n플레이어[{M[i].player.Name}]와 연결중...")
+            while 1:
+                #난수 전송
+                send(M[i].player, str(num))
+                readable, _, _ = select.select(WorldSockets, [], [])
+
+                for sock in readable:
+                    data, addr = sock.recvfrom(1024)  # 데이터 수신
+                    msg = data.decode().strip()
+
+                if sock == M[i].player.socket:
+                    if num in msg:
+                        print("연결성공!")
+                        break
+                    else:
+                        print("ERROR:요청하지 않은 메시지")
+                        print(f"msg:{msg}")
+
+            #카트 연결
+            print(f"\n카트[{M[i].kart.Name}]와 연결중...")
+            while 1:
+                #난수 전송
+                send(M[i].kart, num)
+                
+                readable, _, _ = select.select(WorldSockets, [], [])
+                for sock in readable:
+                    data, addr = sock.recvfrom(1024)  # 데이터 수신
+                    msg = data.decode().strip()
+
+                if sock == M[i].kart.socket:
+                    if num in msg:
+                        print("연결성공!")
+                        break
+                    else:
+                        print("ERROR:요청하지 않은 메시지")
+                        print(f"msg:{msg}")
+
+            #AHRS 정상 작동 확인
+            print(f"\n카트[{M[i].kart.Name}]의 AHRS센서 정상 작동 확인중...")
+            while 1:
+                send(M[i].kart, "ahrs")
+                
+                readable, _, _ = select.select(WorldSockets, [], [])
+                for sock in readable:
+                    data, addr = sock.recvfrom(1024)  # 데이터 수신
+                    msg = data.decode().strip()
+
+                if sock == M[i].kart.socket:
+                    if "[ahrs]" in msg:
+                        msg = msg[6:]
+                        try:
+                            msg = float(msg)
+                            if abs(msg) > 0:
+                                M[i].kart.AHRS = msg
+                                print("AHRS 정상 작동")
+                                print(f"작동값:{msg}")
+                                break
+                            else:
+                                print("ERROR:AHRS 오류")
+                                print(f"작동값:{msg}")
+                        except:
+                            print(f"ERROR:메시지 형식 오류")
+                            print(f"msg:{msg}")
+                            print(f"type:{type(msg)}")
+
+                    elif num not in msg:
+                        print("ERROR:요청하지 않은 메시지")
+                        print(f"msg:{msg}")
+
+            # #color센서 정상 작동 확인
+            # print(f"\n카트[{M[i].kart.Name}]의 AHRS센서 정상 작동 확인중...")
+            # while 1:
+            #     send(M[i].kart, "ahrs")
+                
+            #     readable, _, _ = select.select(WorldSockets, [], [])
+            #     for sock in readable:
+            #         data, addr = sock.recvfrom(1024)  # 데이터 수신
+            #         msg = data.decode().strip()
+
+            #     if sock == M[i].kart.socket:
+            #         if "[ahrs]" in msg:
+            #             msg = msg[6:]
+            #             try:
+            #                 msg = float(msg)
+            #                 if abs(msg) > 0:
+            #                     M[i].kart.AHRS = msg
+            #                     print("AHRS 정상 작동")
+            #                     print(f"작동값:{msg}")
+            #                     break
+            #                 else:
+            #                     print("ERROR:AHRS 오류")
+            #                     print(f"작동값:{msg}")
+            #             except:
+            #                 print(f"ERROR:메시지 형식 오류")
+            #                 print(f"msg:{msg}")
+            #                 print(f"type:{type(msg)}")
+
+            #         elif num not in msg:
+            #             print("ERROR:요청하지 않은 메시지")
+            #             print(f"msg:{msg}")
+
+            print(f"[{M[i].User_Name}과 연결 완료]\n")
+    
+    try:
+        # select를 사용하여 먼저 오는 데이터 처리
+        readable, _, _ = select.select(WorldSockets, [], [])
+
+        for sock in readable:
+            data, addr = sock.recvfrom(1024)  # 데이터 수신
+            msg = data.decode().strip()
+        
+    except:
+        print("연결 오류")
+        pass
+
 def player2kart(U, msg):
-    print(f"Received from [{U.player.Name}]PC: {msg}")
+#    print(f"Received from [{U.player.Name}]PC: {msg}")
 
     if msg in keys_move:
         U.kart.socket.sendto(msg.encode(), (U.kart.Ip, U.kart.Rev_port)) # move
@@ -152,16 +280,18 @@ def player2kart(U, msg):
         print(f"undefine key value: {msg}")
 
 def kart2player(U,msg):
-    print(f"\nReceived from [{U.kart.Name}]ESP: {msg}")
+#    print(f"\nReceived from [{U.kart.Name}]ESP: {msg}")
 
     if "[ahrs]" in msg:
         msg=msg[6:]
         U.player.socket.sendto(msg.encode(), (U.player.Ip, U.player.Rev_port))  
-        print(f"Sent ahrs Value to PC2: {msg}")
+#        print(f"Sent ahrs Value to PC2: {msg}")
+        U.kart.AHRS = msg
     elif "[color]" in msg:
         msg=msg[7:]
         U.player.socket.sendto(msg.encode(), (U.player.Ip, U.player.Rev_port))  
-        print(f"Sent color Value to PC2: {msg}")
+#        print(f"Sent color Value to PC2: {msg}")
+        Dao.kart.color = msg
 
 ##########################################################################################################
 
@@ -184,8 +314,7 @@ macron=[Dao]
 print("*정상적으로 연결되지 않을 경우 네트 워크 설정을 확인하십시오.(공용 -> 개인 네트워크)")
 print("Waiting for key input from Player and data from Kart...")
 
-
-
+connecting(macron)
 
 while True:
     try:
@@ -195,6 +324,8 @@ while True:
         for sock in readable:
             data, addr = sock.recvfrom(1024)  # 데이터 수신
             msg = data.decode().strip()
+
+
 
             for i in range(len(macron)):
                 try:
@@ -206,7 +337,7 @@ while True:
                         kart2player(macron[i], msg)
                 except:
                     print("데이터 에러!!!!!!!!!!!!!!!")
-                    print(msg)
+                    print(f"ERROR:{msg}")
                     pass
 
     except KeyboardInterrupt:
