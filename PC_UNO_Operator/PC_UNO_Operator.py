@@ -1,35 +1,41 @@
 import socket
 import select
+import pandas as pd
+import csv
+import time
 
 WorldSockets=[]
 keys_move=["w","a","s","d"]
+
+csv_file = "kart_log.csv"
+
+
 
 class Common:
     num = 0
 
     def __init__(self, Ip = "", Send_port = "", Rev_port = ""):
-        print("[소캣설정 시작]")
-
+#        print("[소캣설정 시작]")
 
         Common.num += 1
 
         self.Priority = Common.num
-        print(f"우선순위: {self.Priority}")
+#        print(f"우선순위: {self.Priority}")
 
         if not Ip:
             Ip = input("ip가 설정되지 않았습니다.ex) 0.0.0.0: ")
         self.Ip = Ip
-        print(f"ip: {self.Ip}")
+#        print(f"ip: {self.Ip}")
 
         if not Send_port:
             Send_port = input("송신포트가 설정되지 않았습니다.ex) 5000: ")
         self.Send_port = int(Send_port)
-        print(f"송신포트: {self.Send_port}")
+#        print(f"송신포트: {self.Send_port}")
 
         if not Rev_port:
             Rev_port = input("수신포트가 설정되지 않았습니다.ex) 5001: ")
         self.Rev_port = int(Rev_port)
-        print(f"수신포트: {self.Rev_port}\n")
+#        print(f"수신포트: {self.Rev_port}\n")
 
     def Bind_listen(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -39,47 +45,47 @@ class Common:
 
 class Player(Common):
     def __init__(self, Name="", Ip="", Send_port="", Rev_port=""):
-        print("[Player 설정시작]")
+#        print("[Player 설정시작]")
         self.Type = "Player"
-        print(f"객체 타입: {self.Type}")
+#        print(f"객체 타입: {self.Type}")
 
         if not Name:
             Name = input("플레이어의 이름이 설정되지 않았습니다.ex) 다오: ")
         self.Name=Name
-        print(f"플레이어 이름: {self.Name}")
+#        print(f"플레이어 이름: {self.Name}")
 
         super().__init__(Ip, Send_port, Rev_port)
-
         super().Bind_listen()
 
 class kart(Common):
     def __init__(self, Name="", Ip="", Send_port="", Rev_port=""):
-        print("[Kart 설정시작]")
+#        print("[Kart 설정시작]")
         self.Type = "Kart"
-        print(f"객체 타입: {self.Type}")
+#        print(f"객체 타입: {self.Type}")
 
         if not Name:
             Name = input("카트의 이름이 설정되지 않았습니다.ex) 코튼: ")
         self.Name=Name
-        print(f"카트 이름: {self.Name}")
+#        print(f"카트 이름: {self.Name}")
+
+        self.AHRS=""
+        self.color=""
 
         super().__init__(Ip, Send_port, Rev_port)
-
         super().Bind_listen()
 
 class Infra(Common):
     def __init__(self, Name="", Ip="", Send_port="", Rev_port=""):
-        print("[Infra 작성시작]")
+#        print("[Infra 작성시작]")
         self.Type = "Infra"
-        print(f"객체 타입: {self.Type}")
+#        print(f"객체 타입: {self.Type}")
 
         if not Name:
             Name = input("인프라의 이름이 설정되지 않았습니다.ex) 신호등1: ")
         self.Name=Name
-        print(f"인프라 이름: {self.Name}")
+#        print(f"인프라 이름: {self.Name}")
 
         super().__init__(Ip, Send_port, Rev_port)
-
         super().Bind_listen()
 
 class User:
@@ -87,22 +93,77 @@ class User:
                  User_Name="",
                  Name_kart="", Ip_kart="", Send_port_kart="", Rev_port_kart="",
                  Name_player="", Ip_player="", Send_port_player="", Rev_port_player=""):
-        print("-----------------------------")
-        print("[User 설정시작]")
+#        print("-----------------------------")
+#        print("[User 설정시작]")
         self.Type = "User"
-        print(f"객체 타입: {self.Type}")
+#        print(f"객체 타입: {self.Type}")
 
         if not User_Name:
             User_Name = input("유저 이름이 설정되지 않았습니다.ex) 세이버, 다오")
         self.User_Name = User_Name
-        print(f"유저 이름: {self.User_Name}\n")
+#        print(f"유저 이름: {self.User_Name}\n")
+
+        self.driving_record = [["구간", "현재시간", "컬러변환값", "방향변환값", "모터상태", "raw컬러값", "raw방향값"],]
 
         self.kart = kart(Name_kart, Ip_kart, Send_port_kart, Rev_port_kart)
         self.player = Player(Name_player, Ip_player, Send_port_player, Rev_port_player)
 
-        print("<User 설정 완료>")
-        print("-----------------------------")
+        print(f"<유저[{User_Name}] 기본 설정 완료>")
+#        print("-----------------------------")
 
+##########################################################################################################
+
+def csv_save(MACRON:list):
+    for i in range(len(MACRON)):
+        if (MACRON[i].Type == "User"):
+            file_path= MACRON[i].User_Name + ".csv"
+            with open(file_path, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow([f'User_Name={MACRON[i].User_Name}', 
+                                 f'Name_kart={MACRON[i].kart.Name}', 
+                                 f'Ip_kart={MACRON[i].kart.Ip}', 
+                                 f'Send_port_kart={MACRON[i].kart.Send_port}', 
+                                 f'Rev_port_kart={MACRON[i].kart.Rev_port}', 
+                                 f'Name_player={MACRON[i].player.Name}', 
+                                 f'Ip_player={MACRON[i].player.Ip}', 
+                                 f'Send_port_player={MACRON[i].player.Send_port}', 
+                                 f'Rev_port_player={MACRON[i].player.Rev_port}', 
+                                 ], 
+                                 [""]) 
+                for row in MACRON[i].driving_record:
+                    writer.writerow(row)  # 각 행 쓰기
+
+def player2kart(U, msg):
+    print(f"Received from [{U.player.Name}]PC: {msg}")
+
+    if msg in keys_move:
+        U.kart.socket.sendto(msg.encode(), (U.kart.Ip, U.kart.Rev_port)) # move
+        print(f"Sent to [{U.kart.Name}]ESP: {msg}")
+    elif msg == "i":
+        U.kart.socket.sendto("i".encode(), (U.kart.Ip, U.kart.Rev_port))  # motor OFF
+        print(f"Sent to [{U.kart.Name}]ESP: motor OFF")
+    elif msg == "m":
+        U.kart.socket.sendto("ahrs".encode(), (U.kart.Ip, U.kart.Rev_port))  # ahrs값
+        print("ahrs값을 요청하는중...")
+    elif msg == "c":
+        U.kart.socket.sendto("Color".encode(), (U.kart.Ip, U.kart.Rev_port))  # ahrs값
+        print("color값을 요청하는중...")
+    else:
+        print(f"undefine key value: {msg}")
+
+def kart2player(U,msg):
+    print(f"\nReceived from [{U.kart.Name}]ESP: {msg}")
+
+    if "[ahrs]" in msg:
+        msg=msg[6:]
+        U.player.socket.sendto(msg.encode(), (U.player.Ip, U.player.Rev_port))  
+        print(f"Sent ahrs Value to PC2: {msg}")
+    elif "[color]" in msg:
+        msg=msg[7:]
+        U.player.socket.sendto(msg.encode(), (U.player.Ip, U.player.Rev_port))  
+        print(f"Sent color Value to PC2: {msg}")
+
+##########################################################################################################
 
 Dao = User(
         User_Name="almaeng",
@@ -110,7 +171,7 @@ Dao = User(
         Name_player="다오", Ip_player="192.168.191.138", Send_port_player="5005", Rev_port_player="5006"
     )
 
-"""
+""""
 Bazzi = User(
         User_Name="sama",
         Name_kart="버스트", Ip_kart="128.0.0.3", Send_port_kart="7000", Rev_port_kart="7001",
@@ -118,13 +179,13 @@ Bazzi = User(
     )
 """
 
-print(Dao)
-
 macron=[Dao]
-
 
 print("*정상적으로 연결되지 않을 경우 네트 워크 설정을 확인하십시오.(공용 -> 개인 네트워크)")
 print("Waiting for key input from Player and data from Kart...")
+
+
+
 
 while True:
     try:
@@ -136,50 +197,16 @@ while True:
             msg = data.decode().strip()
 
             for i in range(len(macron)):
-                # player에서 온 키 입력 처리
                 try:
+                    # player에서 온 키 입력 처리
                     if sock == macron[i].player.socket:
-                        print(f"Received from [{macron[i].player.Name}]PC: {msg}")
-
-                        if msg in keys_move:
-                            macron[i].kart.socket.sendto(msg.encode(), (macron[i].kart.Ip, macron[i].kart.Rev_port))  # motor ON
-                            print(f"Sent to [{macron[i].kart.Name}]ESP: {msg}")
-
-                        elif msg == "i":
-                            macron[i].kart.socket.sendto("i".encode(), (macron[i].kart.Ip, macron[i].kart.Rev_port))  # motor OFF
-                            print(f"Sent to [{macron[i].kart.Name}]ESP: motor OFF")
-
-                        # 추후 데이터 전송 명령어
-                        elif msg == "m":
-                            macron[i].kart.socket.sendto("ahrs".encode(), (macron[i].kart.Ip, macron[i].kart.Rev_port))  # ahrs값
-                            print("ahrs값을 요청하는중...")
-
-                        elif msg == "c":
-                            macron[i].kart.socket.sendto("Color".encode(), (macron[i].kart.Ip, macron[i].kart.Rev_port))  # ahrs값
-                            print("color값을 요청하는중...")
-
-
-                        else:
-                            print(f"undefine key value: {msg}")
-
-                    # ESP32에서 온도 데이터 수신 → PC2로 전달
+                        player2kart(macron[i], msg)
+                    # kart에서 온 데이터 처리
                     elif sock == macron[i].kart.socket:
-                        print(f"\nReceived from [{macron[i].kart.Name}]ESP: {msg}")
-
-                        if "[ahrs]" in msg:
-                            msg=msg[6:]
-                            macron[i].player.socket.sendto(msg.encode(), (macron[i].player.Ip, macron[i].player.Rev_port))  
-                            print(f"Sent ahrs Value to PC2: {msg}")
-
-                        elif "[color]" in msg:
-                            msg=msg[7:]
-                            macron[i].player.socket.sendto(msg.encode(), (macron[i].player.Ip, macron[i].player.Rev_port))  
-                            print(f"Sent color Value to PC2: {msg}")
-
-
-                        
+                        kart2player(macron[i], msg)
                 except:
-                    print("목표가 격파됨")
+                    print("데이터 에러!!!!!!!!!!!!!!!")
+                    print(msg)
                     pass
 
     except KeyboardInterrupt:
