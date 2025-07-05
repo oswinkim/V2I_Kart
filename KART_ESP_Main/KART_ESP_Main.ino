@@ -9,14 +9,19 @@ float Roll = 0;     //ahrs
 float Pitch = 0;     //ahrs
 float Yaw = 0;     //ahrs
 
+
 const char* ssid = "a12";      // WiFi 이름
 const char* password = "12345678";  // WiFi 비밀번호
+
+#define MAX_LINE_LENGTH 64
+char line[MAX_LINE_LENGTH];
+int lineIndex = 0;
 
 WiFiUDP udp;
 const unsigned int recvPort = 4212;  // PC1에서 제어 명령을 받을 포트
 const unsigned int sendPort = 4213;  // PC1으로 데이터를 보낼 포트
 
-IPAddress PC1_IP(192, 168, 0, 8);  // PC1의 IP 주소
+IPAddress PC1_IP(192, 168, 0, 10);  // PC1의 IP 주소
 
 #define MOTOR_A_IN1 25  // PWM핀
 #define MOTOR_A_IN2 26
@@ -28,7 +33,12 @@ IPAddress PC1_IP(192, 168, 0, 8);  // PC1의 IP 주소
 unsigned long currenttime = 0;
 int randVal = 0;
 
+
 Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS34725_GAIN_1X);
+
+int aa = 0;
+int lux, r, g, b = 0;
+
 
 void setup() {
     Serial.begin(9600);
@@ -61,6 +71,8 @@ void setup() {
     currenttime = millis();
     randVal = random(0, 255);
 
+
+
     Wire.begin(I2C_SDA, I2C_SCL);
 
     if (tcs.begin()) {
@@ -74,131 +86,164 @@ void setup() {
 void loop() {
     char packetBuffer[255];
     int packetSize = udp.parsePacket();
-    if (millis() - currenttime > 5000){
-        randVal = random(0, 255);
-        currenttime = millis();
-    }
 
-    if (AHRS_Serial.available()) {
-        String inString = AHRS_Serial.readStringUntil('\n'); 
+    // AHRS Yaw 값만 추출
+    while (AHRS_Serial.available()) {
+        char c = AHRS_Serial.read();
+        if (c == '\n') {
+            line[lineIndex] = '\0';
 
-        int index1 = inString.indexOf(','); 
-        int index2 = inString.indexOf(',', index1 + 1);
-        int index3 = inString.indexOf(',', index2 + 1);
-        int index4 = inString.length();
+            // Yaw 파싱
+            char* p1 = strchr(line, ',');
+            char* p2 = p1 ? strchr(p1 + 1, ',') : nullptr;
+            char* p3 = p2 ? strchr(p2 + 1, ',') : nullptr;
 
-        if (index1 > 0 && index2 > index1 && index3 > index2) {
-        Roll = inString.substring(index1 + 1, index2).toFloat();
-        Pitch = inString.substring(index2 + 1, index3).toFloat();
-        Yaw = inString.substring(index3 + 1, index4).toFloat();
-        
+            if (p1 && p2 && p3) {
+                Yaw = atof(p3 + 1);
+            }
 
-
+            lineIndex = 0;
+        } else if (lineIndex < MAX_LINE_LENGTH - 1) {
+            line[lineIndex++] = c;
+        } else {
+            // 버퍼 오버플로 방지
+            lineIndex = 0;
         }
     }
+
+    // UDP 패킷 처리
     if (packetSize) {
         udp.read(packetBuffer, 255);
-        packetBuffer[packetSize] = '\0';  // 문자열 종료
+        packetBuffer[packetSize] = '\0';
         Serial.print("Received: ");
         Serial.println(packetBuffer);
 
+        if (aa == 0) {
+            String msg = packetBuffer;
+
+            if (strcmp(packetBuffer, "success") == 0) {
+                aa = 1;
+                Serial.println("connecting success:");
+            } else {
+                char msgBuffer[64];
+                msg.toCharArray(msgBuffer, sizeof(msgBuffer));
+
+                udp.beginPacket(PC1_IP, sendPort);
+                udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
+                udp.endPacket();
+
+                Serial.printf("Sending data: %s\n", msgBuffer);
+            }
+        }
+
         // 모터 제어
-        if (strcmp(packetBuffer, "w") == 0) {
+        else if (strcmp(packetBuffer, "w") == 0) {
             digitalWrite(MOTOR_A_IN1, LOW);
             digitalWrite(MOTOR_A_IN2, LOW);
             digitalWrite(MOTOR_B_IN1, LOW);
             digitalWrite(MOTOR_B_IN2, LOW);
 
             digitalWrite(MOTOR_A_IN1, HIGH);
+            digitalWrite(MOTOR_A_IN2, LOW);
             digitalWrite(MOTOR_B_IN1, HIGH);
-
+            digitalWrite(MOTOR_B_IN2, LOW);
             Serial.println("FORWARD");
-        }
-        else if (strcmp(packetBuffer, "a") == 0) {
+        } else if (strcmp(packetBuffer, "a") == 0) {
             digitalWrite(MOTOR_A_IN1, LOW);
             digitalWrite(MOTOR_A_IN2, LOW);
             digitalWrite(MOTOR_B_IN1, LOW);
             digitalWrite(MOTOR_B_IN2, LOW);
-            
-            digitalWrite(MOTOR_A_IN1, HIGH);
-            digitalWrite(MOTOR_B_IN2, HIGH); 
 
+            digitalWrite(MOTOR_A_IN1, HIGH);
+            digitalWrite(MOTOR_A_IN2, LOW);
+            digitalWrite(MOTOR_B_IN1, LOW);
+            digitalWrite(MOTOR_B_IN2, HIGH);
             Serial.println("LEFT");
-        }
-        else if (strcmp(packetBuffer, "d") == 0) {
+        } else if (strcmp(packetBuffer, "d") == 0) {
             digitalWrite(MOTOR_A_IN1, LOW);
             digitalWrite(MOTOR_A_IN2, LOW);
             digitalWrite(MOTOR_B_IN1, LOW);
             digitalWrite(MOTOR_B_IN2, LOW);
-            
+
+            digitalWrite(MOTOR_A_IN1, LOW);
             digitalWrite(MOTOR_A_IN2, HIGH);
             digitalWrite(MOTOR_B_IN1, HIGH);
-
+            digitalWrite(MOTOR_B_IN2, LOW);
             Serial.println("RIGHT");
-        }
-        else if (strcmp(packetBuffer, "s") == 0) {
+        } else if (strcmp(packetBuffer, "s") == 0) {
             digitalWrite(MOTOR_A_IN1, LOW);
             digitalWrite(MOTOR_A_IN2, LOW);
             digitalWrite(MOTOR_B_IN1, LOW);
             digitalWrite(MOTOR_B_IN2, LOW);
 
+            digitalWrite(MOTOR_A_IN1, LOW);
             digitalWrite(MOTOR_A_IN2, HIGH);
+            digitalWrite(MOTOR_B_IN1, LOW);
             digitalWrite(MOTOR_B_IN2, HIGH);
-
             Serial.println("BACKWARD");
-        } 
-        else if (strcmp(packetBuffer, "i") == 0) {
+        } else if (strcmp(packetBuffer, "i") == 0) {
             digitalWrite(MOTOR_A_IN1, LOW);
             digitalWrite(MOTOR_A_IN2, LOW);
             digitalWrite(MOTOR_B_IN1, LOW);
             digitalWrite(MOTOR_B_IN2, LOW);
+            Serial.println("MOTOR OFF");
 
-            Serial.println("MORTOR OFF");
-        }
+             uint16_t r, g, b, c;
+            tcs.getRawData(&r, &g, &b, &c);
+            lux = tcs.calculateLux(r, g, b);
 
-        // 데이터 전송
-        else if (strcmp(packetBuffer, "ahrs") == 0) {
-            Serial.println("Request received");
 
-            // [ahrs] 형식의 문자열 만들기
-            // String msg = "[ahrs]" + String(Roll, 2) + "," + String(Pitch, 2) + "," + String(Yaw, 2);
-            String msg = "[ahrs]" + String(Yaw, 2);
+            //원상형태["구간", "최초 연결시간", "현재시간", "왼쪽 모터상태", "오른쪽 모터상태", "AHRS", "LUX","컬러R", "컬러G", "컬러B"]
+            String msg = String("[") + "none color,0s,0s,0,0," +
+             String(Yaw, 2) + "," +
+             String(lux, 2) + "," +
+             String(r) + "," +
+             String(g) + "," +
+             String(b) + "]";
 
-            // String을 C 문자열(char 배열)로 변환
             char msgBuffer[64];
             msg.toCharArray(msgBuffer, sizeof(msgBuffer));
 
-            // UDP로 전송
             udp.beginPacket(PC1_IP, sendPort);
             udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
             udp.endPacket();
 
-            // 시리얼 출력
+            Serial.printf("Sending data: %s\n", msgBuffer);
+        }
+
+        // Yaw 값 요청 처리
+        else if (strcmp(packetBuffer, "ahrs") == 0) {
+            Serial.println("Request received");
+
+
+            String msg = "[ahrs]" + String(Yaw, 2);
+            char msgBuffer[64];
+            msg.toCharArray(msgBuffer, sizeof(msgBuffer));
+
+            udp.beginPacket(PC1_IP, sendPort);
+            udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
+            udp.endPacket();
+
             Serial.printf("Sending data: %s\n", msgBuffer);
         }
 
         else if (strcmp(packetBuffer, "Color") == 0) {
-            Serial.println("Request received");
-        
             uint16_t r, g, b, c;
-            tcs.getRawData(&r, &g, &b, &c);      
-        
-            // [ahrs] 형식의 문자열 만들기
-            String msg = "[Color]" + String(r) + "," + String(g) + "," + String(b);
-            
-           
-            // String을 C 문자열(char 배열)로 변환
+            tcs.getRawData(&r, &g, &b, &c);
+            lux = tcs.calculateLux(r, g, b);
+
+            String msg = "[Color]" + String(lux) + "," + String(r) + "," + String(g) + ","+ String(b);
             char msgBuffer[64];
             msg.toCharArray(msgBuffer, sizeof(msgBuffer));
 
-            // UDP로 전송
             udp.beginPacket(PC1_IP, sendPort);
             udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
             udp.endPacket();
 
-            // 시리얼 출력
             Serial.printf("Sending data: %s\n", msgBuffer);
+            
         }
+
     }
 }
 
