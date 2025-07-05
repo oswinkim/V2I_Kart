@@ -155,20 +155,23 @@ def connecting(M:list):
                 #난수 전송
                 send(M[i].player, num)
 
-                readable, _, _ = select.select(WorldSockets, [], [])
+                readable, _, _ = select.select(WorldSockets, [], [], 1)
 
-                for sock in readable:
-                    data, addr = sock.recvfrom(1024)  # 데이터 수신
-                    msg = data.decode().strip()
+                if not readable:
+                    print("재전송")
+                else:
+                    for sock in readable:
+                        data, addr = sock.recvfrom(1024)  # 데이터 수신
+                        msg = data.decode().strip()
 
-                if sock == M[i].player.socket:
-                    if num in msg:
-                        print("연결성공!")
-                        send(M[i].player, "success")
-                        break
-                    else:
-                        print("ERROR:요청하지 않은 메시지")
-                        print(f"msg:{msg}")
+                    if sock == M[i].player.socket:
+                        if num in msg:
+                            print("연결성공!")
+                            send(M[i].player, "success")
+                            break
+                        else:
+                            print("ERROR:요청하지 않은 메시지")
+                            print(f"msg:{msg}")
 
 
             #카트 연결
@@ -177,85 +180,94 @@ def connecting(M:list):
                 #난수 전송
                 send(M[i].kart, num)
 
-                
-                readable, _, _ = select.select(WorldSockets, [], [])
-                for sock in readable:
-                    data, addr = sock.recvfrom(1024)  # 데이터 수신
-                    msg = data.decode().strip()
+                readable, _, _ = select.select(WorldSockets, [], [], 1)
 
-                
-                if sock == M[i].kart.socket:
-                    if num in msg:
-                        print("연결성공!")
-                        send(M[i].kart, "success")
-                        break
-                    else:
-                        print("ERROR:요청하지 않은 메시지")
-                        print(f"msg:{msg}")
+                if not readable:
+                    print("재전송")
+
+                else:
+                    for sock in readable:
+                        data, addr = sock.recvfrom(1024)  # 데이터 수신
+                        msg = data.decode().strip()
+
+                    
+                    if sock == M[i].kart.socket:
+                        if num in msg:
+                            print("연결성공!")
+                            send(M[i].kart, "success")
+                            break
+                        else:
+                            print("ERROR:요청하지 않은 메시지")
+                            print(f"msg:{msg}")
 
             #AHRS 정상 작동 확인
             print(f"\n카트[{M[i].kart.Name}]의 AHRS센서 정상 작동 확인중...")
             while 1:
                 send(M[i].kart, "ahrs")
+
+                readable, _, _ = select.select(WorldSockets, [], [], 1)
                 
-                readable, _, _ = select.select(WorldSockets, [], [])
-                for sock in readable:
-                    data, addr = sock.recvfrom(1024)  # 데이터 수신
-                    msg = data.decode().strip()
+                if not readable:
+                    print("⛔ UDP 응답 없음 → AHRS 점검 패스")
+                else:
+                    for sock in readable:
+                        data, addr = sock.recvfrom(1024)  # 데이터 수신
+                        msg = data.decode().strip()
 
-                if sock == M[i].kart.socket:
-                    if "[ahrs]" in msg:
-                        msg = msg[6:]
-                        try:
-                            msg = float(msg)
-                            if abs(msg) > 0:
-                                M[i].kart.AHRS_start = msg
-                                print("AHRS 정상 작동")
-                                print(f"작동값:{msg}")
-                                break
-                            else:
-                                print("ERROR:AHRS 오류")
-                                print(f"작동값:{msg}")
-                        except:
-                            print(f"ERROR:메시지 형식 오류")
+                    if sock == M[i].kart.socket:
+                        if "[ahrs]" in msg:
+                            msg = msg[6:]
+                            try:
+                                msg = float(msg)
+                                if abs(msg) > 0:
+                                    M[i].kart.AHRS_start = msg
+                                    print("AHRS 정상 작동")
+                                    print(f"작동값:{msg}")
+                                    break
+                                else:
+                                    print("ERROR:AHRS 오류")
+                                    print(f"작동값:{msg}")
+                            except:
+                                print(f"ERROR:메시지 형식 오류")
+                                print(f"msg:{msg}")
+                                print(f"type:{type(msg)}")
+
+                        elif num not in msg:
+                            print("ERROR:요청하지 않은 메시지")
                             print(f"msg:{msg}")
-                            print(f"type:{type(msg)}")
-
-                    elif num not in msg:
-                        print("ERROR:요청하지 않은 메시지")
-                        print(f"msg:{msg}")
 
             #color센서 정상 작동 확인
             print(f"\n카트[{M[i].kart.Name}]의 Color센서 정상 작동 확인중...")
             while 1:
                 send(M[i].kart, "Color")
                 
-                readable, _, _ = select.select(WorldSockets, [], [])
-                for sock in readable:
-                    data, addr = sock.recvfrom(1024)  # 데이터 수신
-                    msg = data.decode().strip()
+                readable, _, _ = select.select(WorldSockets, [], [], 1)
+                if not readable:
+                    print("패스")
+                else:
+                    for sock in readable:
+                        data, addr = sock.recvfrom(1024)  # 데이터 수신
+                        msg = data.decode().strip()
 
-                if sock == M[i].kart.socket:
-                    if "[Color]" in msg:
-                        msg = msg[7:]
-                        try:
-                            msg_r, msg_g, msg_b = msg.split(',')
+                    if sock == M[i].kart.socket:
+                        if "[Color]" in msg:
+                            msg = msg[7:]
+
+                            lux, msg_r, msg_g, msg_b = msg.split(',')
                             if abs(int(msg_r)) > 0 and abs(int(msg_g)) > 0 and abs(int(msg_b)) > 0:
                                 M[i].kart.color = msg
                                 print("Color 정상 작동")
                                 print(f"작동값:{msg}")
-                                break
+                                print(f"오늘의 결과:{color_define(lux,msg_r,msg_g,msg_b,color_tunning)}")
+#                                    break
                             else:
                                 print("ERROR:Color 오류")
                                 print(f"작동값:{msg}")
-                        except:
-                            print(f"ERROR:메시지 형식 오류")
-                            print(f"msg:{msg}")
-                            print(f"type:{type(msg)}")
 
-                    elif num not in msg:
-                        print("ERROR:요청하지 않은 메시지")
-                        print(f"msg:{msg}")
+
+                        elif num not in msg:
+                            print("ERROR:요청하지 않은 메시지")
+                            print(f"msg:{msg}")
 
             print(f"[{M[i].User_Name}과 연결 완료]\n")
     
@@ -289,6 +301,22 @@ def player2kart(U, msg):
     else:
         print(f"undefine key value: {msg}")
 
+def color_define(lux,r,g,b,tuning:list):
+    raw=[lux,r,g,b]
+    print(f"raw color value:{raw}")
+    deviation=[]
+
+    for i in range(len(tuning)):
+        temp=0
+        for j in range(4):
+            temp+=(int(tuning[i][j+1])-int(raw[j]))**2
+        deviation.append(temp)
+
+    for i in range(len(deviation)):
+        if min(deviation)==deviation[i]:
+            print(f"컬러 편차제곱합의 최소: {min(deviation)}")
+            return tuning[i][0]
+
 def kart2player(U,msg):
 #    print(f"\nReceived from [{U.kart.Name}]ESP: {msg}")
 
@@ -305,10 +333,11 @@ def kart2player(U,msg):
 
     MSG = msg.split('|')
 #msg = "0|1234|red|..."
-#원상형태["구간", "시간", "컬러변환값", "왼쪽 모터상태", "오른쪽 모터상태", "AHRS", "컬러R", "컬러G", "컬러B"]
-#최종형태["구간", "현재시간", "컬러변환값", "왼쪽 모터상태","오른쪽 모터상태", "방향변환값", "raw컬러값", "raw방향값"]
+#원상형태["구간", "최초 연결시간", "현재시간", "왼쪽 모터상태", "오른쪽 모터상태", "AHRS", "LUX","컬러R", "컬러G", "컬러B"]
+#최종형태["구간", "최초 연결시간", "현재시간", "왼쪽 모터상태", "오른쪽 모터상태", "방향변환값","색 변환 값" "LUX", "raw컬러값", "raw방향값"]
+    U.kart.color = color_define(MSG[6], MSG[7], MSG[8], MSG[9], color_tunning)
     
-    histo=[MSG[0], MSG[1], MSG[2], MSG[3], MSG[4], MSG[5]-U.kart.AHRS_start, MSG[6]+','+MSG[7]+','+MSG[8], MSG[5]]
+    histo=[MSG[0], MSG[1], MSG[2], MSG[3], MSG[4], MSG[5]-U.kart.AHRS_start, MSG[6], MSG[7]+'|'+MSG[8]+'|'+MSG[9], MSG[5]]
     U.driving_record.append(histo)
 
 ##########################################################################################################
@@ -317,10 +346,18 @@ def kart2player(U,msg):
 WorldSockets=[]
 keys_move=["w","a","s","d"]
 
+color_tunning=[["white", 920, 2500, 1700, 1300], 
+               ["red", 65200, 1700, 300, 250],
+               ["pink", 50, 2200, 800, 750],
+               ["orange", 65300, 2200, 500, 350],
+               ["green", 750, 700, 750, 330],
+               ["blue", 550, 600, 900, 900],
+               ["sky", 850, 1300, 1300, 1100]]
+
 Dao = User(
         User_Name="almaeng",
         Name_kart="핑크베놈", Ip_kart="192.168.0.2", Send_port_kart="4213", Rev_port_kart="4212",
-        Name_player="다오", Ip_player="192.168.0.8", Send_port_player="5005", Rev_port_player="5006"
+        Name_player="다오", Ip_player="192.168.0.7", Send_port_player="5005", Rev_port_player="5006"
     )
 
 """"
