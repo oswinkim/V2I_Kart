@@ -31,8 +31,6 @@ arrowKey = np.array([
     [[385, 200], [300, 250], [300, 150]]   # →
 ], dtype=np.int32)
 
-
-
 # 데이터 수신 함수
 def receive_data():
     try:
@@ -59,6 +57,24 @@ def send_key_input():
 print(sock_recv.getsockname())
 img = np.empty((240, 320, 3), dtype=np.uint8)     
 #cap = cv2.VideoCapture(vid_path)
+
+#연산컴퓨터와 연결
+while 1:
+    try:
+        data, _ = sock_recv.recvfrom(1024)
+        message = data.decode().strip()
+        if message:
+            print(f"Received data from PC1: {message}")
+            if "success" in message:
+                print("연산컴퓨터와 연결 성공")
+                break
+            sock_send.sendto(message.encode(), (PC1_IP, PC1_PORT))
+    except BlockingIOError:
+        pass  # 데이터가 없으면 넘어감
+    except UnicodeDecodeError:
+        print("Error: Received data could not be decoded.")  # 디코딩 오류 방지
+
+
 # 메인 루프
 while True:
 
