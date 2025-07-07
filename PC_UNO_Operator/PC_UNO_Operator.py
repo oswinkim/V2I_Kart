@@ -67,8 +67,12 @@ class kart(Common):
 #        print(f"카트 이름: {self.Name}")
         
         self.AHRS_start = 0
-        self.AHRS= 0
+        self.AHRS = 0
+
         self.color=""
+
+        self.left_motor = 0
+        self.right_motor = 0
 
         super().__init__(Ip, Send_port, Rev_port)
 
@@ -100,12 +104,31 @@ class User:
         self.User_Name = User_Name
 #        print(f"유저 이름: {self.User_Name}\n")
 
-        self.driving_record = [["구간", "현재시간", "컬러변환값", "왼쪽 모터상태","오른쪽 모터상태", "방향변환값", "raw컬러값", "raw방향값"],]
-
-        self.stopline = 0
-
         self.kart = kart(Name_kart, Ip_kart, Send_port_kart, Rev_port_kart)
         self.player = Player(Name_player, Ip_player, Send_port_player, Rev_port_player)
+
+        self.driving_record = [ [f'User_Name={self.User_Name}', 
+                                 f'Name_kart={self.kart.Name}', 
+                                 f'Ip_kart={self.kart.Ip}', 
+                                 f'Send_port_kart={self.kart.Send_port}', 
+                                 f'Rev_port_kart={self.kart.Rev_port}', 
+                                 f'Name_player={self.player.Name}', 
+                                 f'Ip_player={self.player.Ip}', 
+                                 f'Send_port_player={self.player.Send_port}', 
+                                 f'Rev_port_player={self.player.Rev_port}', 
+                                 ], 
+                                ["현재구간", 
+                                 "최초 연결시간", 
+                                 "현재시간", 
+                                 "왼쪽 모터상태", 
+                                 "오른쪽 모터상태", 
+                                 "방향변환값",
+                                 "변환된 컬러값",  
+                                 "LUX", 
+                                 "컬러R", "컬러G", "컬러B", 
+                                 "raw방향값"]]
+        
+        self.trace = []
 
         print(f"<유저[{User_Name}] 기본 설정 완료>")
 #        print("-----------------------------")
@@ -128,21 +151,22 @@ def csv_file_save(MACRON:list):
             file_path= MACRON[i].User_Name + ".csv"
             with open(file_path, 'w', newline='', encoding='utf-8') as f:
                 writer = csv.writer(f)
-                writer.writerow([f'User_Name={MACRON[i].User_Name}', 
-                                 f'Name_kart={MACRON[i].kart.Name}', 
-                                 f'Ip_kart={MACRON[i].kart.Ip}', 
-                                 f'Send_port_kart={MACRON[i].kart.Send_port}', 
-                                 f'Rev_port_kart={MACRON[i].kart.Rev_port}', 
-                                 f'Name_player={MACRON[i].player.Name}', 
-                                 f'Ip_player={MACRON[i].player.Ip}', 
-                                 f'Send_port_player={MACRON[i].player.Send_port}', 
-                                 f'Rev_port_player={MACRON[i].player.Rev_port}', 
-                                 ])
-                writer.writerow([]) 
+                # writer.writerow([f'User_Name={MACRON[i].User_Name}', 
+                #                  f'Name_kart={MACRON[i].kart.Name}', 
+                #                  f'Ip_kart={MACRON[i].kart.Ip}', 
+                #                  f'Send_port_kart={MACRON[i].kart.Send_port}', 
+                #                  f'Rev_port_kart={MACRON[i].kart.Rev_port}', 
+                #                  f'Name_player={MACRON[i].player.Name}', 
+                #                  f'Ip_player={MACRON[i].player.Ip}', 
+                #                  f'Send_port_player={MACRON[i].player.Send_port}', 
+                #                  f'Rev_port_player={MACRON[i].player.Rev_port}', 
+                #                  ])
+                # writer.writerow([]) 
                 for row in MACRON[i].driving_record:
                     writer.writerow(row)  # 각 행 쓰기
 
 def connecting(M:list):
+    #난수 발생
     num = str(r.randrange(10,100))
     
     for i in range(len(M)):
@@ -172,7 +196,6 @@ def connecting(M:list):
                         else:
                             print("ERROR:요청하지 않은 메시지")
                             print(f"msg:{msg}")
-
 
             #카트 연결
             print(f"\n카트[{M[i].kart.Name}]와 연결중...")
@@ -208,7 +231,7 @@ def connecting(M:list):
                 readable, _, _ = select.select(WorldSockets, [], [], 1)
                 
                 if not readable:
-                    print("⛔ UDP 응답 없음 → AHRS 점검 패스")
+                    print("패스")
                 else:
                     for sock in readable:
                         data, addr = sock.recvfrom(1024)  # 데이터 수신
@@ -254,41 +277,28 @@ def connecting(M:list):
                             msg = msg[7:]
 
                             lux, msg_r, msg_g, msg_b = msg.split(',')
-                            if abs(int(msg_r)) > 0 and abs(int(msg_g)) > 0 and abs(int(msg_b)) > 0:
+                            if abs(int(lux)) > 0 and abs(int(msg_r)) > 0 and abs(int(msg_g)) > 0 and abs(int(msg_b)) > 0:
                                 M[i].kart.color = msg
                                 print("Color 정상 작동")
                                 print(f"작동값:{msg}")
-                                print(f"오늘의 결과:{color_define(lux,msg_r,msg_g,msg_b,color_tunning)}")
-#                                    break
+                                # print(f"현재색깔:{color_define(lux,msg_r,msg_g,msg_b,color_tunning, "None")}")
+                                break
                             else:
                                 print("ERROR:Color 오류")
                                 print(f"작동값:{msg}")
-
 
                         elif num not in msg:
                             print("ERROR:요청하지 않은 메시지")
                             print(f"msg:{msg}")
 
             print(f"[{M[i].User_Name}과 연결 완료]\n")
-    
-    try:
-        # select를 사용하여 먼저 오는 데이터 처리
-        readable, _, _ = select.select(WorldSockets, [], [])
 
-        for sock in readable:
-            data, addr = sock.recvfrom(1024)  # 데이터 수신
-            msg = data.decode().strip()
-        
-    except:
-        print("연결 오류")
-        pass
 
 def player2kart(U, msg):
-#    print(f"Received from [{U.player.Name}]PC: {msg}")
-
     if msg in keys_move:
         U.kart.socket.sendto(msg.encode(), (U.kart.Ip, U.kart.Rev_port)) # move
         print(f"Sent to [{U.kart.Name}]ESP: {msg}")
+
     elif msg == "i":
         U.kart.socket.sendto("i".encode(), (U.kart.Ip, U.kart.Rev_port))  # motor OFF
         print(f"Sent to [{U.kart.Name}]ESP: motor OFF")
@@ -298,13 +308,26 @@ def player2kart(U, msg):
     # elif msg == "c":
     #     U.kart.socket.sendto("Color".encode(), (U.kart.Ip, U.kart.Rev_port))  # ahrs값
     #     print("color값을 요청하는중...")
+
     else:
         print(f"undefine key value: {msg}")
 
-def color_define(lux,r,g,b,tuning:list):
+"""
+def color_define(lux,r,g,b,tuning:list, U):
     raw=[lux,r,g,b]
     print(f"raw color value:{raw}")
     deviation=[]
+
+    try:
+        if U.Type == "User":
+            Dao.kart.color_R = int(r)
+            Dao.kart.color_G = int(g)
+            Dao.kart.color_B = int(b)
+
+        else:
+            print("객체의 타입이 잘못되었습니다.(User를 위한 함수)")
+    except:
+        print("객체없음")
 
     for i in range(len(tuning)):
         temp=0
@@ -315,11 +338,11 @@ def color_define(lux,r,g,b,tuning:list):
     for i in range(len(deviation)):
         if min(deviation)==deviation[i]:
             print(f"컬러 편차제곱합의 최소: {min(deviation)}")
+            #출력결과
             return tuning[i][0]
-
+"""
+            
 def kart2player(U,msg):
-#    print(f"\nReceived from [{U.kart.Name}]ESP: {msg}")
-
 #     if "[ahrs]" in msg:
 #         msg=msg[6:]
 #         U.player.socket.sendto(msg.encode(), (U.player.Ip, U.player.Rev_port))  
@@ -331,13 +354,12 @@ def kart2player(U,msg):
 # #        print(f"Sent color Value to PC2: {msg}")
 #         Dao.kart.color = msg
 
-    MSG = msg.split('|')
+    histo = msg.split('|')
 #msg = "0|1234|red|..."
-#원상형태["구간", "최초 연결시간", "현재시간", "왼쪽 모터상태", "오른쪽 모터상태", "AHRS", "LUX","컬러R", "컬러G", "컬러B"]
-#최종형태["구간", "최초 연결시간", "현재시간", "왼쪽 모터상태", "오른쪽 모터상태", "방향변환값","색 변환 값" "LUX", "raw컬러값", "raw방향값"]
-    U.kart.color = color_define(MSG[6], MSG[7], MSG[8], MSG[9], color_tunning)
-    
-    histo=[MSG[0], MSG[1], MSG[2], MSG[3], MSG[4], MSG[5]-U.kart.AHRS_start, MSG[6], MSG[7]+'|'+MSG[8]+'|'+MSG[9], MSG[5]]
+#원상형태["현재구간", "최초 연결시간", "현재시간", "왼쪽 모터상태", "오른쪽 모터상태", "방향변환값","변환된 컬러값",  "LUX", "컬러R", "컬러G", "컬러B", "raw방향값"]
+#최종형태["현재구간", "최초 연결시간", "현재시간", "왼쪽 모터상태", "오른쪽 모터상태", "방향변환값","변환된 컬러값",  "LUX", "컬러R", "컬러G", "컬러B", "raw방향값"]
+#같음
+
     U.driving_record.append(histo)
 
 ##########################################################################################################
@@ -346,6 +368,8 @@ def kart2player(U,msg):
 WorldSockets=[]
 keys_move=["w","a","s","d"]
 
+"""
+#함수 자동화 필요(컬러센서 마다 편차 존재)
 color_tunning=[["white", 920, 2500, 1700, 1300], 
                ["red", 65200, 1700, 300, 250],
                ["pink", 50, 2200, 800, 750],
@@ -353,7 +377,8 @@ color_tunning=[["white", 920, 2500, 1700, 1300],
                ["green", 750, 700, 750, 330],
                ["blue", 550, 600, 900, 900],
                ["sky", 850, 1300, 1300, 1100]]
-
+"""
+               
 Dao = User(
         User_Name="almaeng",
         Name_kart="핑크베놈", Ip_kart="192.168.0.2", Send_port_kart="4213", Rev_port_kart="4212",
@@ -370,6 +395,7 @@ Bazzi = User(
 
 #통신하는 모든 객체들
 macron=[Dao]
+#macron=[Dao, Bazzi]
 
 ##########################################################################################################
 #동작부분
@@ -416,6 +442,7 @@ while True:
 
     except KeyboardInterrupt:
         print("Exiting...")
+        #csv파일 저장
         csv_file_save(macron)
         for sock in WorldSockets:
             sock.close()
