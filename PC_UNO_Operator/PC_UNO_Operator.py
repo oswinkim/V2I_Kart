@@ -168,8 +168,9 @@ def csv_file_save(MACRON:list):
                 qual = "[nomal]"
             else:
                 qual = "[good]"
+            
+            file_name = "c:\\Users\\PC-16\\Desktop\\V2I_Kart\\PC_UNO_Operator\\data\\" + qual + MACRON[i].User_Name + ".csv"
 
-            file_name = qual + MACRON[i].User_Name + ".csv"
             with open(file_name, 'w', newline='', encoding='utf-8') as f:
                 writer = csv.writer(f)
                 # writer.writerow([f'User_Name={MACRON[i].User_Name}', 
@@ -375,6 +376,7 @@ def kart2player(U,msg):
     #         U.player.socket.sendto(msg.encode(), (U.player.Ip, U.player.Rev_port))  
     # #        print(f"Sent color Value to PC2: {msg}")
     #         Dao.kart.color = msg
+    # print(f"2player:{msg}")
     if "[record]" in msg:
         msg = msg[8:]
         histo = msg.split('|')
@@ -404,7 +406,7 @@ color_tunning=[["white", 920, 2500, 1700, 1300],
 Dao = User(
         User_Name="almaeng",
         Name_kart="핑크베놈", Ip_kart="192.168.0.2", Send_port_kart="4213", Rev_port_kart="4212",
-        Name_player="다오", Ip_player="192.168.0.7", Send_port_player="5005", Rev_port_player="5006"
+        Name_player="다오", Ip_player="192.168.0.13", Send_port_player="5005", Rev_port_player="5006"
     )
 
 """"
