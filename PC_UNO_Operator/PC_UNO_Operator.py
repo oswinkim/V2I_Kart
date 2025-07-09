@@ -145,13 +145,20 @@ def sends(t:list, msg):
         target.socket.sendto(msg.encode(), (target.Ip, target.Rev_port))
         print(f"{target.Name}에게 {msg}를 보냈습니다.")
 
-def get_unique_filename(base_name, extension=".csv"):
-    filename = base_name + extension
+def get_unique_filename(directory, base_name, extension=".csv"):
+    # 디렉토리 존재 여부 확인 및 생성
+    os.makedirs(directory, exist_ok=True)
+
+    filename = f"{base_name}{extension}"
+    full_path = os.path.join(directory, filename)
+
     counter = 1
-    while os.path.exists(filename):
+    while os.path.exists(full_path):
         filename = f"{base_name}_{counter}{extension}"
+        full_path = os.path.join(directory, filename)
         counter += 1
-    return filename
+
+    return full_path
 
 def csv_file_save(MACRON:list):
     for i in range(len(MACRON)):
@@ -179,7 +186,7 @@ def csv_file_save(MACRON:list):
             
             file_path = "c:\\Users\\PC-16\\Desktop\\V2I_Kart\\PC_UNO_Operator\\data\\" 
             base_name = qual + MACRON[i].User_Name 
-            file_name = file_path + get_unique_filename(base_name)
+            file_name = get_unique_filename(file_path,base_name)
 
 
             with open(file_name, 'w', newline='', encoding='utf-8') as f:
