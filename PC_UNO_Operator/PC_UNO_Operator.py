@@ -148,8 +148,28 @@ def sends(t:list, msg):
 def csv_file_save(MACRON:list):
     for i in range(len(MACRON)):
         if (MACRON[i].Type == "User"):
-            file_path= MACRON[i].User_Name + ".csv"
-            with open(file_path, 'w', newline='', encoding='utf-8') as f:
+            qual = 0
+            while 1:
+                qual = input(f"{MACRON[i].User_Name}의 데이터 수집 결과 결정 (GOOD:2, NOMAL:1, BAD:0)\n입력: ")
+                try:
+                    if 0<=qual<=2:
+                        final = input(f"{qual}을 선택하신게 맞다면 1을 아니라면 0을 눌러주세요.\n입력:")
+                        print(f"{final}을 입력하셨습니다.")
+                        break
+                    else:
+                        print(f"{qual}을 입력하셨습니다.\n 0,1,2 중에 입력해주세요")
+                except:
+                    print(f"입력하신 자료형은 정수가 아닙니다.({type(qual)}형으로 입력됨)")
+
+            if qual == 0:
+                qual = "[bad]"
+            elif qual == 1:
+                qual = "[nomal]"
+            else:
+                qual = "[good]"
+
+            file_name = qual + MACRON[i].User_Name + ".csv"
+            with open(file_name, 'w', newline='', encoding='utf-8') as f:
                 writer = csv.writer(f)
                 # writer.writerow([f'User_Name={MACRON[i].User_Name}', 
                 #                  f'Name_kart={MACRON[i].kart.Name}', 
@@ -164,6 +184,7 @@ def csv_file_save(MACRON:list):
                 # writer.writerow([]) 
                 for row in MACRON[i].driving_record:
                     writer.writerow(row)  # 각 행 쓰기
+                print(f"저장된 데이터 파일명: {file_name}")
 
 def connecting(M:list):
     #난수 발생
