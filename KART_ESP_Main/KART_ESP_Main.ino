@@ -20,8 +20,13 @@ int aa = 0;     //연산컴퓨터와 최초연결시 1로 갱신
 #define MOTOR_B_IN1 32
 #define MOTOR_B_IN2 33
 
-int MOTOR_A_state = 0;
-int MOTOR_B_state = 0;
+#define PWM_A_IN1_CH 0
+#define PWM_A_IN2_CH 1
+#define PWM_B_IN1_CH 2
+#define PWM_B_IN2_CH 3
+
+int MOTOR_A_state = 120;
+int MOTOR_B_state = 140;
 
 //ahrs설정 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #define MAX_LINE_LENGTH 64
@@ -145,15 +150,24 @@ void setup() {
     Serial.println(WiFi.localIP());
     udp.begin(recvPort);
 
-    pinMode(MOTOR_A_IN1, OUTPUT);
-    pinMode(MOTOR_A_IN2, OUTPUT);
-    pinMode(MOTOR_B_IN1, OUTPUT);
-    pinMode(MOTOR_B_IN2, OUTPUT);
+    ledcSetup(PWM_A_IN1_CH, 1000, 8);  // PWM 채널, 주파수, 해상도
+    ledcAttachPin(MOTOR_A_IN1, PWM_A_IN1_CH);
 
-    digitalWrite(MOTOR_A_IN1, LOW);
-    digitalWrite(MOTOR_A_IN2, LOW);
-    digitalWrite(MOTOR_B_IN1, LOW);
-    digitalWrite(MOTOR_B_IN2, LOW);
+    ledcSetup(PWM_A_IN2_CH, 1000, 8);
+    ledcAttachPin(MOTOR_A_IN2, PWM_A_IN2_CH);
+
+    // 오른쪽 모터
+    ledcSetup(PWM_B_IN1_CH, 1000, 8);
+    ledcAttachPin(MOTOR_B_IN1, PWM_B_IN1_CH);
+
+    ledcSetup(PWM_B_IN2_CH, 1000, 8);
+    ledcAttachPin(MOTOR_B_IN2, PWM_B_IN2_CH);
+
+    ledcWrite(PWM_A_IN1_CH, 0);
+    ledcWrite(PWM_A_IN2_CH, 0);
+    ledcWrite(PWM_B_IN1_CH, 0);
+    ledcWrite(PWM_B_IN2_CH, 0);
+
 
     Wire.begin(I2C_SDA, I2C_SCL);
 
@@ -228,66 +242,70 @@ void loop() {
 
         // 모터 제어
         else if (strcmp(packetBuffer, "w") == 0) {
-            digitalWrite(MOTOR_A_IN1, LOW);
-            digitalWrite(MOTOR_A_IN2, LOW);
-            digitalWrite(MOTOR_B_IN1, LOW);
-            digitalWrite(MOTOR_B_IN2, LOW);
+            ledcWrite(PWM_A_IN1_CH, 0);
+            ledcWrite(PWM_A_IN2_CH, 0);
+            ledcWrite(PWM_B_IN1_CH, 0);
+            ledcWrite(PWM_B_IN2_CH, 0);
 
-            digitalWrite(MOTOR_A_IN1, HIGH);
-            digitalWrite(MOTOR_A_IN2, LOW);
-            digitalWrite(MOTOR_B_IN1, HIGH);
-            digitalWrite(MOTOR_B_IN2, LOW);
+            ledcWrite(PWM_A_IN1_CH, MOTOR_A_state);  // 왼쪽 정방향
+            ledcWrite(PWM_A_IN2_CH, 0);
+            ledcWrite(PWM_B_IN1_CH, MOTOR_B_state);  // 오른쪽 정방향
+            ledcWrite(PWM_B_IN2_CH, 0);
+
             Serial.println("FORWARD");
 
             data(start_time, MOTOR_A_state, MOTOR_B_state, start_yaw, Yaw, currentColorName, currentLux, currentR, currentG, currentB);
 
         } else if (strcmp(packetBuffer, "a") == 0) {
-            digitalWrite(MOTOR_A_IN1, LOW);
-            digitalWrite(MOTOR_A_IN2, LOW);
-            digitalWrite(MOTOR_B_IN1, LOW);
-            digitalWrite(MOTOR_B_IN2, LOW);
+            ledcWrite(PWM_A_IN1_CH, 0);
+            ledcWrite(PWM_A_IN2_CH, 0);
+            ledcWrite(PWM_B_IN1_CH, 0);
+            ledcWrite(PWM_B_IN2_CH, 0);
 
-            digitalWrite(MOTOR_A_IN1, HIGH);
-            digitalWrite(MOTOR_A_IN2, LOW);
-            digitalWrite(MOTOR_B_IN1, LOW);
-            digitalWrite(MOTOR_B_IN2, HIGH);
+            ledcWrite(PWM_A_IN1_CH, 0);
+            ledcWrite(PWM_A_IN2_CH, MOTOR_A_state);
+            ledcWrite(PWM_B_IN1_CH, MOTOR_B_state);
+            ledcWrite(PWM_B_IN2_CH, 0);
+
             Serial.println("LEFT");
 
             data(start_time, MOTOR_A_state, MOTOR_B_state, start_yaw, Yaw, currentColorName, currentLux, currentR, currentG, currentB);
 
         } else if (strcmp(packetBuffer, "d") == 0) {
-            digitalWrite(MOTOR_A_IN1, LOW);
-            digitalWrite(MOTOR_A_IN2, LOW);
-            digitalWrite(MOTOR_B_IN1, LOW);
-            digitalWrite(MOTOR_B_IN2, LOW);
+            ledcWrite(PWM_A_IN1_CH, 0);
+            ledcWrite(PWM_A_IN2_CH, 0);
+            ledcWrite(PWM_B_IN1_CH, 0);
+            ledcWrite(PWM_B_IN2_CH, 0);
 
-            digitalWrite(MOTOR_A_IN1, LOW);
-            digitalWrite(MOTOR_A_IN2, HIGH);
-            digitalWrite(MOTOR_B_IN1, HIGH);
-            digitalWrite(MOTOR_B_IN2, LOW);
+            ledcWrite(PWM_A_IN1_CH, MOTOR_A_state);
+            ledcWrite(PWM_A_IN2_CH, 0);
+            ledcWrite(PWM_B_IN1_CH, 0);
+            ledcWrite(PWM_B_IN2_CH, MOTOR_B_state);
+
             Serial.println("RIGHT");
 
             data(start_time, MOTOR_A_state, MOTOR_B_state, start_yaw, Yaw, currentColorName, currentLux, currentR, currentG, currentB);
 
         } else if (strcmp(packetBuffer, "s") == 0) {
-            digitalWrite(MOTOR_A_IN1, LOW);
-            digitalWrite(MOTOR_A_IN2, LOW);
-            digitalWrite(MOTOR_B_IN1, LOW);
-            digitalWrite(MOTOR_B_IN2, LOW);
+            ledcWrite(PWM_A_IN1_CH, 0);
+            ledcWrite(PWM_A_IN2_CH, 0);
+            ledcWrite(PWM_B_IN1_CH, 0);
+            ledcWrite(PWM_B_IN2_CH, 0);
 
-            digitalWrite(MOTOR_A_IN1, LOW);
-            digitalWrite(MOTOR_A_IN2, HIGH);
-            digitalWrite(MOTOR_B_IN1, LOW);
-            digitalWrite(MOTOR_B_IN2, HIGH);
+            ledcWrite(PWM_A_IN1_CH, 0);
+            ledcWrite(PWM_A_IN2_CH, MOTOR_A_state);
+            ledcWrite(PWM_B_IN1_CH, 0);
+            ledcWrite(PWM_B_IN2_CH, MOTOR_B_state);
+
             Serial.println("BACKWARD");
 
             data(start_time, MOTOR_A_state, MOTOR_B_state, start_yaw, Yaw, currentColorName, currentLux, currentR, currentG, currentB);
             
         } else if (strcmp(packetBuffer, "i") == 0) {
-            digitalWrite(MOTOR_A_IN1, LOW);
-            digitalWrite(MOTOR_A_IN2, LOW);
-            digitalWrite(MOTOR_B_IN1, LOW);
-            digitalWrite(MOTOR_B_IN2, LOW);
+            ledcWrite(PWM_A_IN1_CH, 0);
+            ledcWrite(PWM_A_IN2_CH, 0);
+            ledcWrite(PWM_B_IN1_CH, 0);
+            ledcWrite(PWM_B_IN2_CH, 0);
             Serial.println("MOTOR OFF");
 
             data(start_time, MOTOR_A_state, MOTOR_B_state, start_yaw, Yaw, currentColorName, currentLux, currentR, currentG, currentB);
