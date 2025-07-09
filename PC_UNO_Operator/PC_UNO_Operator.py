@@ -152,6 +152,7 @@ def csv_file_save(MACRON:list):
             while 1:
                 qual = input(f"{MACRON[i].User_Name}의 데이터 수집 결과 결정 (GOOD:2, NOMAL:1, BAD:0)\n입력: ")
                 try:
+                    qual=int(qual)
                     if 0<=qual<=2:
                         final = input(f"{qual}을 선택하신게 맞다면 1을 아니라면 0을 눌러주세요.\n입력:")
                         print(f"{final}을 입력하셨습니다.")
@@ -364,24 +365,24 @@ def color_define(lux,r,g,b,tuning:list, U):
 """
             
 def kart2player(U,msg):
-#     if "[ahrs]" in msg:
-#         msg=msg[6:]
-#         U.player.socket.sendto(msg.encode(), (U.player.Ip, U.player.Rev_port))  
-# #        print(f"Sent ahrs Value to PC2: {msg}")
-#         U.kart.AHRS = msg
-#     elif "[color]" in msg:
-#         msg=msg[7:]
-#         U.player.socket.sendto(msg.encode(), (U.player.Ip, U.player.Rev_port))  
-# #        print(f"Sent color Value to PC2: {msg}")
-#         Dao.kart.color = msg
-
-    histo = msg.split('|')
-#msg = "0|1234|red|..."
-#원상형태["현재구간", "최초 연결시간", "현재시간", "왼쪽 모터상태", "오른쪽 모터상태", "방향변환값","변환된 컬러값",  "LUX", "컬러R", "컬러G", "컬러B", "raw방향값"]
-#최종형태["현재구간", "최초 연결시간", "현재시간", "왼쪽 모터상태", "오른쪽 모터상태", "방향변환값","변환된 컬러값",  "LUX", "컬러R", "컬러G", "컬러B", "raw방향값"]
-#같음
-
-    U.driving_record.append(histo)
+    #     if "[ahrs]" in msg:
+    #         msg=msg[6:]
+    #         U.player.socket.sendto(msg.encode(), (U.player.Ip, U.player.Rev_port))  
+    # #        print(f"Sent ahrs Value to PC2: {msg}")
+    #         U.kart.AHRS = msg
+    #     elif "[color]" in msg:
+    #         msg=msg[7:]
+    #         U.player.socket.sendto(msg.encode(), (U.player.Ip, U.player.Rev_port))  
+    # #        print(f"Sent color Value to PC2: {msg}")
+    #         Dao.kart.color = msg
+    if "[record]" in msg:
+        msg = msg[8:]
+        histo = msg.split('|')
+        #msg = "0|1234|red|..."
+        #원상형태["현재구간", "최초 연결시간", "현재시간", "왼쪽 모터상태", "오른쪽 모터상태", "방향변환값","변환된 컬러값",  "LUX", "컬러R", "컬러G", "컬러B", "raw방향값"]
+        #최종형태["현재구간", "최초 연결시간", "현재시간", "왼쪽 모터상태", "오른쪽 모터상태", "방향변환값","변환된 컬러값",  "LUX", "컬러R", "컬러G", "컬러B", "raw방향값"]
+        #같음
+        U.driving_record.append(histo)
 
 ##########################################################################################################
 #실행 시 변경해야 할 부분
