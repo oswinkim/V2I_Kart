@@ -11,7 +11,7 @@ const char* password = "12345678";  // WiFi 비밀번호
 const unsigned int recvPort = 4212;  // PC1에서 제어 명령을 받을 포트
 const unsigned int sendPort = 4213;  // PC1으로 데이터를 보낼 포트
 
-IPAddress PC1_IP(192, 168, 0, 10);  // PC1의 IP 주소
+IPAddress PC1_IP(192, 168, 0, 7);  // PC1의 IP 주소
 int aa = 0;     //연산컴퓨터와 최초연결시 1로 갱신
 
 //모터설정 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -104,7 +104,7 @@ void data(
         current_time = millis();
         float yaw_diff = start_yaw - current_yaw;
 
-        String msg = "0," +                         // 현재 구간
+        String msg = "[record]0|" +                        // 현재 구간
                     String(start_time) + "|" +     // 최초 연결 시간
                     String(current_time) + "|" +   // 현재 시간
                     String(motorAState) + "|" +    // 왼쪽 모터 상태
@@ -238,6 +238,9 @@ void loop() {
             digitalWrite(MOTOR_B_IN1, HIGH);
             digitalWrite(MOTOR_B_IN2, LOW);
             Serial.println("FORWARD");
+
+            data(start_time, MOTOR_A_state, MOTOR_B_state, start_yaw, Yaw, currentColorName, currentLux, currentR, currentG, currentB);
+
         } else if (strcmp(packetBuffer, "a") == 0) {
             digitalWrite(MOTOR_A_IN1, LOW);
             digitalWrite(MOTOR_A_IN2, LOW);
@@ -249,6 +252,9 @@ void loop() {
             digitalWrite(MOTOR_B_IN1, LOW);
             digitalWrite(MOTOR_B_IN2, HIGH);
             Serial.println("LEFT");
+
+            data(start_time, MOTOR_A_state, MOTOR_B_state, start_yaw, Yaw, currentColorName, currentLux, currentR, currentG, currentB);
+
         } else if (strcmp(packetBuffer, "d") == 0) {
             digitalWrite(MOTOR_A_IN1, LOW);
             digitalWrite(MOTOR_A_IN2, LOW);
@@ -260,6 +266,9 @@ void loop() {
             digitalWrite(MOTOR_B_IN1, HIGH);
             digitalWrite(MOTOR_B_IN2, LOW);
             Serial.println("RIGHT");
+
+            data(start_time, MOTOR_A_state, MOTOR_B_state, start_yaw, Yaw, currentColorName, currentLux, currentR, currentG, currentB);
+
         } else if (strcmp(packetBuffer, "s") == 0) {
             digitalWrite(MOTOR_A_IN1, LOW);
             digitalWrite(MOTOR_A_IN2, LOW);
@@ -271,12 +280,17 @@ void loop() {
             digitalWrite(MOTOR_B_IN1, LOW);
             digitalWrite(MOTOR_B_IN2, HIGH);
             Serial.println("BACKWARD");
+
+            data(start_time, MOTOR_A_state, MOTOR_B_state, start_yaw, Yaw, currentColorName, currentLux, currentR, currentG, currentB);
+            
         } else if (strcmp(packetBuffer, "i") == 0) {
             digitalWrite(MOTOR_A_IN1, LOW);
             digitalWrite(MOTOR_A_IN2, LOW);
             digitalWrite(MOTOR_B_IN1, LOW);
             digitalWrite(MOTOR_B_IN2, LOW);
             Serial.println("MOTOR OFF");
+
+            data(start_time, MOTOR_A_state, MOTOR_B_state, start_yaw, Yaw, currentColorName, currentLux, currentR, currentG, currentB);
         }
 
         // Yaw 값 요청 처리
@@ -308,7 +322,7 @@ void loop() {
             Serial.printf("Sending data: %s\n", msgBuffer);
             
         }
-        data(start_time, MOTOR_A_state, MOTOR_B_state, start_yaw, Yaw, currentColorName, currentLux, currentR, currentG, currentB);
+//        data(start_time, MOTOR_A_state, MOTOR_B_state, start_yaw, Yaw, currentColorName, currentLux, currentR, currentG, currentB);   //위치 떄문에 딜레이가 심해짐
 
     }
 }
