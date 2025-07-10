@@ -7,6 +7,8 @@ import os
 import csv
 import random as r
 
+import math
+import json
 ##########################################################################################################
 #클래스
 
@@ -127,14 +129,80 @@ class User:
                                  "LUX", 
                                  "컬러R", "컬러G", "컬러B", 
                                  "raw방향값"]]
-        
-        self.trace = []
 
         print(f"<유저[{User_Name}] 기본 설정 완료>")
 #        print("-----------------------------")
+        self.junction_count = 0
+        self.junction_range = 8
+        self.junction_select_log = [0 for _ in range(self.junction_range)]
+        self.is_awaiting_exchange = False
+        self.last_segment = 0
+        self._initialize_segments()
+
+    def _initialize_segments(self):
+        start_segment = 1
+        self.exchange_segment = math.ceil((self.junction_range+3))
+        end_segment = (self.junction_range+2)*2+1
+        self.control_segments = {
+            start_segment, 
+            self.exchange_segment, 
+            end_segment
+        }
+
+    def segment_detection(self):
+        try: 
+            current_segment = int(self.driving_record[-1][0])
+        except:
+            current_segment = 0
+        if self.last_segment < current_segment:
+            segment_is_junction       = ((current_segment//10)%2 == 1) and (current_segment not in self.control_segments)
+            segment_in_junction_range = self.junction_count < self.junction_range
+            if segment_is_junction and segment_in_junction_range:
+                    self.junction_select_log[self.junction_count] = current_segment%10
+                    self.junction_count += 1
+            if current_segment == self.exchange_segment:
+                self.is_awaiting_exchange = True
+            self.last_segment = current_segment
 
 ##########################################################################################################
 #함수
+
+def check_all_users_awaiting_exchange(user_list):
+    for user in user_list:
+        if not user.is_awaiting_exchange:
+            return False
+    print("INFO: all user are awaiting exchange. start junction_select_log exchange")
+    junction_info_exchange(user_list)
+    print("all user's awaiting exchange mode OFF")
+
+def junction_info_exchange(user_list):
+    for user in user_list:
+        log_to_send = user.junction_select_log[:len(user.junction_select_log)//2]
+        log_to_send = log_to_send[::-1]
+        sending_and_recv_check(user.player, json.dumps(log_to_send))
+        sending_and_recv_check(user.kart, json.dumps(log_to_send))
+        print(f"{user}'s junction_select_log sending for all users (log:{log_to_send})")
+        print(f"{user}'s awaiting exchange mode OFF")
+        user.is_awaiting_exchange = False
+
+def sending_and_recv_check(target_device, data_to_send, MAX_RETRIES=255):
+    for _ in range(MAX_RETRIES):
+        send(target_device, data_to_send)
+
+        readable_sockets, _, _ = select.select(WorldSockets, [], [], 1)
+        for sock in readable_sockets:
+            if sock == target_device.socket: # 현재 처리 중인 디바이스의 소켓인지 확인
+                data, addr = sock.recvfrom(1024)
+                msg = data.decode().strip()
+                if msg == "success":
+                    print(f"INFO: {target_device}가 수신 성공")
+                    send(target_device, "success")
+                    return True
+                else:
+                    print(f"ERROR: 송신과 관계없는 메시지가 수신됨({target_device}: {msg})")
+        print(f"INFO: {target_device}로부터 수신이 확인되지 않음. 재전송...")
+    print(f"{MAX_RETRIES}번의 확인 시도가 실패함. 처리를 건너뜀")
+    return False
 
 def send(target, msg):
     target.socket.sendto(msg.encode(), (target.Ip, target.Rev_port))
@@ -471,6 +539,7 @@ while True:
                         # kart에서 온 데이터 처리
                         elif sock == macron[i].kart.socket:
                             kart2player(macron[i], msg)
+                        macron[i].segment_detection()
 
                     elif (macron[i].Type == "Infra"):
                         # infra에서 온 데이터 처리
@@ -481,6 +550,8 @@ while True:
                     print("ERROR:데이터가공 오류!")
                     print(f"ERROR:{msg}")
                     pass
+
+            check_all_users_awaiting_exchange(user_list)
 
     except KeyboardInterrupt:
         print("Exiting...")
