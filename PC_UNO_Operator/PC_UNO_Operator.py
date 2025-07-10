@@ -132,7 +132,7 @@ class User:
         print(f"<유저[{User_Name}] 기본 설정 완료>")
 #        print("-----------------------------")
         self.junction_count = 0
-        self.junction_range = 8
+        self.junction_range = 4
         self.junction_select_log = [0 for _ in range(self.junction_range)]
         self.is_awaiting_exchange = False
         self.last_segment = 0
@@ -154,12 +154,13 @@ class User:
         except:
             current_segment = 0
         if self.last_segment < current_segment:
-            segment_is_junction       = ((current_segment//10)%2 == 1) and (current_segment not in self.control_segments)
+            segment_is_junction       = ((current_segment//10)%2 == 1) and \
+                                        (current_segment//10 not in self.control_segments)
             segment_in_junction_range = self.junction_count < self.junction_range
             if segment_is_junction and segment_in_junction_range:
                     self.junction_select_log[self.junction_count] = current_segment%10
                     self.junction_count += 1
-            if current_segment == self.exchange_segment:
+            if current_segment//10 == self.exchange_segment:
                 self.is_awaiting_exchange = True
             self.last_segment = current_segment
 
@@ -178,7 +179,7 @@ def junction_info_exchange(user_list):
     for user in user_list:
         log_to_send = user.junction_select_log[:len(user.junction_select_log)//2]
         log_to_send = log_to_send[::-1]
-        message_to_send = f"{user.User_Name}|{"|".join(map(str, log_to_send))}"
+        message_to_send = f"[JUNC_LOG]{user.User_Name}|{"|".join(map(str, log_to_send))}"
 
         sending_and_recv_check(user.player, message_to_send)
         sending_and_recv_check(user.kart, message_to_send)
