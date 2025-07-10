@@ -404,22 +404,26 @@ def connecting(M:list):
 
 
 def player2kart(U, msg):
-    if msg in keys_move:
-        U.kart.socket.sendto(msg.encode(), (U.kart.Ip, U.kart.Rev_port)) # move
-        print(f"Sent to [{U.kart.Name}]ESP: {msg}")
+    if not U.is_awaiting_exchange:
+        if msg in keys_move:
+            U.kart.socket.sendto(msg.encode(), (U.kart.Ip, U.kart.Rev_port)) # move
+            print(f"Sent to [{U.kart.Name}]ESP: {msg}")
 
-    elif msg == "i":
-        U.kart.socket.sendto("i".encode(), (U.kart.Ip, U.kart.Rev_port))  # motor OFF
-        print(f"Sent to [{U.kart.Name}]ESP: motor OFF")
-    # elif msg == "m":
-    #     U.kart.socket.sendto("ahrs".encode(), (U.kart.Ip, U.kart.Rev_port))  # ahrs값
-    #     print("ahrs값을 요청하는중...")
-    # elif msg == "c":
-    #     U.kart.socket.sendto("Color".encode(), (U.kart.Ip, U.kart.Rev_port))  # ahrs값
-    #     print("color값을 요청하는중...")
+        elif msg == "i":
+            U.kart.socket.sendto("i".encode(), (U.kart.Ip, U.kart.Rev_port))  # motor OFF
+            print(f"Sent to [{U.kart.Name}]ESP: motor OFF")
+        # elif msg == "m":
+        #     U.kart.socket.sendto("ahrs".encode(), (U.kart.Ip, U.kart.Rev_port))  # ahrs값
+        #     print("ahrs값을 요청하는중...")
+        # elif msg == "c":
+        #     U.kart.socket.sendto("Color".encode(), (U.kart.Ip, U.kart.Rev_port))  # ahrs값
+        #     print("color값을 요청하는중...")
 
+        else:
+            print(f"undefine key value: {msg}")
     else:
-        print(f"undefine key value: {msg}")
+        U.kart.socket.sendto("i".encode(), (U.kart.Ip, U.kart.Rev_port))  # motor OFF
+        print(f"Sent to [{U.kart.Name}]ESP: motor OFF, Because awaiting exchange.")
 
 """
 def color_define(lux,r,g,b,tuning:list, U):
