@@ -8,7 +8,6 @@ import csv
 import random as r
 
 import math
-import json
 ##########################################################################################################
 #클래스
 
@@ -179,9 +178,11 @@ def junction_info_exchange(user_list):
     for user in user_list:
         log_to_send = user.junction_select_log[:len(user.junction_select_log)//2]
         log_to_send = log_to_send[::-1]
-        sending_and_recv_check(user.player, json.dumps(log_to_send))
-        sending_and_recv_check(user.kart, json.dumps(log_to_send))
-        print(f"{user}'s junction_select_log sending for all users (log:{log_to_send})")
+        message_to_send = f"{user.User_Name}|{"|".join(map(str, log_to_send))}"
+
+        sending_and_recv_check(user.player, message_to_send)
+        sending_and_recv_check(user.kart, message_to_send)
+        print(f"{user}'s junction_select_log sending for all users (log:{message_to_send})")
         print(f"{user}'s awaiting exchange mode OFF")
         user.is_awaiting_exchange = False
 
