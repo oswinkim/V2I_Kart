@@ -21,8 +21,8 @@ sock_recv.bind(("", PC2_RECV_PORT))  # 온도 데이터 수c신 소켓
 sock_recv.settimeout(0.0)  # Non-blocking 모드 (딜레이 제거)
 
 # 키 입력 상태
-keys = np.array([False] * 5)
-prev_keys = np.array([False] * 5)  # 이전 키 상태 저장
+keys = np.array([False] * 6)
+prev_keys = np.array([False] * 6)  # 이전 키 상태 저장
 '''
 key_map = {
             'up': (0, 'down'),
@@ -37,7 +37,8 @@ key_map = {
             's': (1, 'w'),
             'a': (2, 'd'),
             'd': (3, 'a'),
-            'i': (4, 'i')
+            'i': (4, 'z'),
+            'z': (5, 'i')
         }
 #'''
 #UI 관련
@@ -51,8 +52,11 @@ center = (-200, -150)
 scale = 3
 arrows =  (arrows - center) * scale + center
 
-vid_path = f"http://{ESP32CAM_IP}:{ESP32CAM_PORT}/stream"
+vid_path = 0#f"http://{ESP32CAM_IP}:{ESP32CAM_PORT}/stream"
+a = time.time()
 cap = cv2.VideoCapture(vid_path)
+if not cap.isOpened():
+    print(f"time: {time.time()-a}")
 
 img_size = [1152, 864]
 img = np.empty((img_size[1], img_size[0], 3), dtype=np.uint8)     
@@ -140,6 +144,24 @@ def hand_shake_with_operator():
         except UnicodeDecodeError:
             print("Error: Received data could not be decoded.")  # 디코딩 오류 방지
 
+def hand_shake_with_operator(MAX_RETRIES=1024):
+    for _ in range(MAX_RETRIES):
+        try: # 현재 처리 중인 디바이스의 소켓인지 확인
+                data, addr = sock_recv.recvfrom(1024)
+                msg = data.decode().strip()
+                if msg == "success":
+                    print(f"INFO: 연산컴퓨터와 수신 성공")
+                    return True
+                else:
+                    print(f"ERROR: 송신과 관계없는 메시지가 수신됨")
+        except BlockingIOError:
+            print(f"INFO: 수신이 확인되지 않음. 재전송...")
+        except UnicodeDecodeError:
+            print("Error: Received data could not be decoded.")  # 디코딩 오류 방지
+        time.sleep(0.1)
+    print(f"{MAX_RETRIES}번의 확인 시도가 실패함. 처리를 건너뜀")
+    return False
+
 # 리소스 정리
 def cleanup():
     sock_recv.close()
@@ -147,16 +169,20 @@ def cleanup():
     cv2.destroyAllWindows()
     print("shut down properly. [^-^]/")
 
-hand_shake_with_operator()
-print(f"MY_IP: {sock_recv.getsockname()}")
 
 keyboard.hook(send_key_input)
+#hand_shake_with_operator()
+print(f"MY_IP: {sock_recv.getsockname()}")
+
 # 메인 루프
 while True:
     auto_send()
+    
     #영상 읽어오기
     frame, img = cap.read()
     #읽어오는 동영상 위치가 잘못되었으면 종료
+    if not cap.isOpened():
+        img = np.empty((img_size[1], img_size[0], 3), dtype=np.uint8)
     if not cap: # ret이 False인 경우 (프레임 읽기 실패)
         print("Failed to grab frame or stream ended. ([T^T])")
         cap.release()
@@ -165,9 +191,8 @@ while True:
             print("Could not re-open video stream.([T^T])")
             break
         else:
-            print("Reconnected to stream.\[+_+]/")
+            print(r"Reconnected to stream.\[+_+]/")
         break # 프레임 읽기 실패 시 루프 종료
-
     if not frame:
         img = np.empty((img_size[1], img_size[0], 3), dtype=np.uint8)
         #print("Received an empty image frame. ['-']>") # img가 None인 경우
