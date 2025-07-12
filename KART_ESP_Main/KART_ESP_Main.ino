@@ -55,8 +55,8 @@ unsigned long current_time = 0;
 bool conected_with_server = true;
 
 int start_segment = 20;
-int end_segment   = 70; //수정 필요
-int log_exchange_segment = 130; //수정 필요
+int end_segment   = 130; //확인 필요
+int log_exchange_segment = 70; //확인 필요
 int last_segment = 0;
 
 bool log_exchange_mode = false;
@@ -168,8 +168,8 @@ bool segment_log_recv() {
             //Serial.println("connecting success:");
             return true;
         }
-        else if (strncmp(packetBuffer, "[JUNC_LOG]", 10) == 0) {
-            String receivedLog = String(packetBuffer).substring(10);
+        else if (strncmp(packetBuffer, "[junction_log]", 14) == 0) {
+            String receivedLog = String(packetBuffer).substring(14);
             int commaIndex = 0;
             int prevCommaIndex = -1;
             for(int k=0; k<4; k++){
@@ -183,7 +183,10 @@ bool segment_log_recv() {
                 others_junction_log[k] = segmentStr.toInt();
                 prevCommaIndex = commaIndex;
                 if(commaIndex == -1){
-                  return true;
+                    udp.beginPacket(PC1_IP, sendPort);
+                    udp.write((const uint8_t*)"success", strlen("success"));
+                    udp.endPacket();
+                    return true;
                 }
             }
             /*
@@ -194,6 +197,9 @@ bool segment_log_recv() {
             }
             Serial.println("]");
             */
+            udp.beginPacket(PC1_IP, sendPort);
+            udp.write((const uint8_t*)"success", strlen("success"));
+            udp.endPacket();
             return true;
         }
     }
@@ -203,13 +209,13 @@ bool segment_log_recv() {
 void segment_log_send(String msg) {
     char msgBuffer[128];
     msg.toCharArray(msgBuffer, sizeof(msgBuffer));
-
     udp.beginPacket(PC1_IP, sendPort);
     udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
     udp.endPacket();
     //Serial.printf("Sending data: %s\n", msgBuffer);
 }
 
+//데이터 파싱, 컬러 데이터 전용
 void data_parsing(String msg) {
     String result[6][5];  // 데이터를 저장할 2차원 String 배열
     String initial = "color_data|";
@@ -276,7 +282,7 @@ void control_by_segment(int segment = 10) {
     if (conected_with_server == true){
       if (segment == start_segment){
           started_time = millis();
-          String message = "[playtime]start|" + String(playtime)
+          String message = "[playtime-start]" + String(playtime)
                         + "|" + String(duration_time) + "|" + String(penalty_time) 
                         + "|" + String(started_time)  + "|" + String(ended_time);
           segment_log_send(message);
@@ -285,7 +291,7 @@ void control_by_segment(int segment = 10) {
           duration_time = ended_time - started_time;
           playtime = duration_time + (penalty_count*penalty_time);
           motor_stop();
-          String message = "[playtime]end|" + String(playtime)
+          String message = "[playtime-end]" + String(playtime)
                         + "|" + String(duration_time) + "|" + String(penalty_count) 
                         + "|" + String(started_time)  + "|" + String(ended_time);
           segment_log_send(message);
@@ -293,7 +299,7 @@ void control_by_segment(int segment = 10) {
       } else if (segment == log_exchange_segment){
           log_exchange_mode = true;
           motor_stop();
-          String message = "[JUNC_LOG]";
+          String message = "[junction_log]";
           for(int i=0; i<4; i++){
                 message += String(my_junction_log[i]);
                 if(i < 3) message += "|";
@@ -307,9 +313,9 @@ void control_by_segment(int segment = 10) {
           }
       } else if (segment != 0 && segment > last_segment){
           if (segment %2 != 0 && my_junction_log_index < 4) { // 배열 범위 체크
-              my_junction_log[my_junction_log_index] = segment;
+              my_junction_log[my_junction_log_index] = segment%10;
               if (segment > log_exchange_segment && my_junction_log_index < 4){
-                  if (segment == others_junction_log[my_junction_log_index]){
+                  if (segment%10 == others_junction_log[my_junction_log_index]){
                     penalty_count++;
                   }
               }
@@ -317,7 +323,7 @@ void control_by_segment(int segment = 10) {
                 my_junction_log_index++;
               }
           }
-          String message = "[SEGMENT]" + String(segment);
+          String message = "[current_segment]" + String(segment);
           segment_log_send(message);
           last_segment = segment;
         }
@@ -432,7 +438,7 @@ void loop() {
         }
     }
 
-    int current_segment = 32;
+    int current_segment = 32; //테스트용값
     conected_with_server = aa;
     control_by_segment(current_segment);
 }

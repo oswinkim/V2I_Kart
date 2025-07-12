@@ -136,12 +136,13 @@ class User:
         self.junction_select_log = [0 for _ in range(self.junction_range)]
         self.is_awaiting_exchange = False
         self.last_segment = 0
+        self.others_junction_log = [0,0,0,0]
         self._initialize_segments()
 
     def _initialize_segments(self):
-        start_segment = 1
-        self.exchange_segment = math.ceil((self.junction_range+3))
-        end_segment = (self.junction_range+2)*2+1
+        start_segment = 10 +10
+        self.exchange_segment = math.ceil((self.junction_range+3))*10
+        end_segment = ((self.junction_range+2)*2+1)*10
         self.control_segments = {
             start_segment, 
             self.exchange_segment, 
@@ -155,17 +156,31 @@ class User:
             current_segment = 0
         if self.last_segment < current_segment:
             segment_is_junction       = ((current_segment//10)%2 == 1) and \
-                                        (current_segment//10 not in self.control_segments)
+                                        (current_segment not in self.control_segments)
             segment_in_junction_range = self.junction_count < self.junction_range
             if segment_is_junction and segment_in_junction_range:
                     self.junction_select_log[self.junction_count] = current_segment%10
                     self.junction_count += 1
-            if current_segment//10 == self.exchange_segment:
+            if current_segment == self.exchange_segment:
                 self.is_awaiting_exchange = True
             self.last_segment = current_segment
 
 ##########################################################################################################
 #함수
+
+def handle_kart_junction_log(user_obj, received_msg):
+    print(f"INFO: Kart ({user_obj.kart.Name})로부터 Junction Log 수신: {received_msg}")
+    try:
+        received_log_str = received_msg[14:] 
+        received_log_list = [int(x) for x in received_log_str.split('|')]
+        user_obj.others_junction_log = received_log_list
+        print(f"INFO: Kart의 Junction Log 저장됨: {user_obj.others_junction_log}")
+        send(user_obj.kart, "success") 
+        print(f"INFO: Kart ({user_obj.kart.Name})에게 Junction Log 수신 성공 응답 보냄.")
+        return True
+    except Exception as e:
+        print(f"ERROR: Kart Junction Log 처리 중 오류 발생: {e}")
+        return False
 
 def check_all_users_awaiting_exchange(user_list):
     for user in user_list:
@@ -177,9 +192,10 @@ def check_all_users_awaiting_exchange(user_list):
 
 def junction_info_exchange(user_list):
     for user in user_list:
-        log_to_send = user.junction_select_log[:len(user.junction_select_log)//2]
+        log_to_send = user.junction_select_log
+        #log_to_send = user.junction_select_log[:len(user.junction_select_log)//2]
         log_to_send = log_to_send[::-1]
-        message_to_send = f"[JUNC_LOG]{user.User_Name}|{"|".join(map(str, log_to_send))}"
+        message_to_send = f"[junction_log]{"|".join(map(str, log_to_send))}"
 
         sending_and_recv_check(user.player, message_to_send)
         sending_and_recv_check(user.kart, message_to_send)
@@ -544,7 +560,12 @@ while True:
                             player2kart(macron[i], msg)
                         # kart에서 온 데이터 처리
                         elif sock == macron[i].kart.socket:
-                            kart2player(macron[i], msg)
+                            # 메시지 타입을 먼저 확인하여 분배
+                            if msg.startswith("[junction_log]"):
+                                handle_kart_junction_log(macron[i], msg) # 별도 함수 호출
+                            else:
+                                kart2player(macron[i], msg) # 기존 kart2player는 다른 메시지 처리
+                        
                         macron[i].segment_detection()
 
                     elif (macron[i].Type == "Infra"):
