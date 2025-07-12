@@ -86,6 +86,7 @@ class Infra(Common):
             Name = input("인프라의 이름이 설정되지 않았습니다.ex) 신호등1: ")
         self.Name=Name
 #        print(f"인프라 이름: {self.Name}")
+        self.color = "red"
 
         super().__init__(Ip, Send_port, Rev_port)
 
@@ -334,6 +335,23 @@ def connecting(M:list):
 
             print(f"[{M[i].User_Name}과 연결 완료]\n")
 
+            if (M[i].Type == "Infra"):
+                print(f"random value:{num}")
+                send(M[i], num)
+                readable, _, _ = select.select(WorldSockets, [], [])
+            for sock in readable:
+                data, addr = sock.recvfrom(1024)  # 데이터 수신
+                msg = data.decode().strip()
+
+            if sock == M[i].socket:
+                if num in msg:
+                    print("연결성공!")
+                    send(M[i], "success")
+                    break
+                else:
+                    print("ERROR:요청하지 않은 메시지")
+                    print(f"msg:{msg}")
+
 
 def player2kart(U, msg):
     if msg in keys_move:
@@ -398,12 +416,24 @@ def kart2player(U,msg):
     if "[record]" in msg:
         msg = msg[8:]
         histo = msg.split('|')
+
+
+        U.kart.AHRS = histo[11]
+        U.kart.color = histo[6]
+        U.kart.left_motor = histo[3]
+        U.kart.right_motor = histo[4]
+
+    
         #msg = "0|1234|red|..."
         #원상형태["현재구간", "최초 연결시간", "현재시간", "왼쪽 모터상태", "오른쪽 모터상태", "방향변환값","변환된 컬러값",  "LUX", "컬러R", "컬러G", "컬러B", "raw방향값"]
         #최종형태["현재구간", "최초 연결시간", "현재시간", "왼쪽 모터상태", "오른쪽 모터상태", "방향변환값","변환된 컬러값",  "LUX", "컬러R", "컬러G", "컬러B", "raw방향값"]
         #같음
         U.driving_record.append(histo)
 
+# 신호등 메시지 I.color에 저장
+def infra2opertor(I,msg):
+    if "[Traffic_Light]" in msg:
+        I.color = msg[14:]
 ##########################################################################################################
 #실행 시 변경해야 할 부분
 
@@ -434,9 +464,10 @@ Bazzi = User(
         Name_player="배찌", Ip_player="128.0.0.4", Send_port_player="8000", Rev_port_player="8001"
     )
 """
+Traffic_Light = Infra("신호등","192.168.0.12 ",4214,4215)
 
 #통신하는 모든 객체들
-macron=[Dao]
+macron=[Dao, Traffic_Light]
 #macron=[Dao, Bazzi]
 
 ##########################################################################################################
@@ -452,6 +483,10 @@ print("*정상적으로 연결되지 않을 경우 네트 워크 설정을 확�
 print("Waiting for key input from Player and data from Kart...")
 
 connecting(macron)
+
+for i in macron:
+    if i.Type == "User":
+        send(i,Traffic_Light.color)
 
 while True:
     try:
@@ -471,11 +506,22 @@ while True:
                         # kart에서 온 데이터 처리
                         elif sock == macron[i].kart.socket:
                             kart2player(macron[i], msg)
+                            if macron[i].kart.color =="red":
+                                Traffic_Light.color = "green"
+                                send(Traffic_Light,"green")
+                                print(f"Send {Traffic_Light.color} to Infra")
+
+                            elif macron[i].kart.color !="red" and macron[i].kart.color !="green":
+                                Traffic_Light.color = "red"
+                                send(Traffic_Light,"red")
+                                print(f"Send {Traffic_Light.color} to Infra")
 
                     elif (macron[i].Type == "Infra"):
                         # infra에서 온 데이터 처리
                         if sock == macron[i].socket:
                             send(macron[i],msg)
+                            infra2opertor(macron[i],msg)
+                            print(f"Infra Color: {macron[i].color}")
 
                 except:
                     print("ERROR:데이터가공 오류!")
