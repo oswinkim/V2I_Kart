@@ -203,7 +203,7 @@ def junction_info_exchange(user_list):
         print(f"{user}'s awaiting exchange mode OFF")
         user.is_awaiting_exchange = False
 
-def sending_and_recv_check(target_device, data_to_send, MAX_RETRIES=255):
+def sending_and_recv_check(target_device, data_to_send, MAX_RETRIES=1024):
     for _ in range(MAX_RETRIES):
         send(target_device, data_to_send)
 
