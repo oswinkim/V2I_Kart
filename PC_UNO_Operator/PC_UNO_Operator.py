@@ -4,9 +4,13 @@ import socket
 import select
 
 import os
-import csv
+
 import random as r
 
+import json
+import csv
+rats_life=0
+rat_list=[]
 ##########################################################################################################
 #클래스
 
@@ -70,6 +74,7 @@ class kart(Common):
         self.AHRS = 0
 
         self.color=""
+        self.color_name=""
 
         self.left_motor = 0
         self.right_motor = 0
@@ -93,7 +98,8 @@ class User:
     def __init__(self,
                  User_Name="",
                  Name_kart="", Ip_kart="", Send_port_kart="", Rev_port_kart="",
-                 Name_player="", Ip_player="", Send_port_player="", Rev_port_player=""):
+                 Name_player="", Ip_player="", Send_port_player="", Rev_port_player="",
+                 role="jobless", goal="none"):
 #        print("-----------------------------")
 #        print("[User 설정시작]")
         self.Type = "User"
@@ -102,6 +108,9 @@ class User:
         if not User_Name:
             User_Name = input("유저 이름이 설정되지 않았습니다.ex) 세이버, 다오")
         self.User_Name = User_Name
+        self.role = role
+        self.goal = goal
+        self.life = 1
 #        print(f"유저 이름: {self.User_Name}\n")
 
         self.kart = kart(Name_kart, Ip_kart, Send_port_kart, Rev_port_kart)
@@ -130,6 +139,7 @@ class User:
         
         self.trace = []
 
+
         print(f"<유저[{User_Name}] 기본 설정 완료>")
 #        print("-----------------------------")
 
@@ -138,7 +148,7 @@ class User:
 
 def send(target, msg):
     target.socket.sendto(msg.encode(), (target.Ip, target.Rev_port))
-    print(f"{target.Name}에게 {msg}를 보냈습니다.")
+    # print(f"{target.Name}에게 {msg}를 보냈습니다.")
 
 def sends(t:list, msg):
     for target in t:
@@ -264,85 +274,124 @@ def connecting(M:list):
                             print("ERROR:요청하지 않은 메시지")
                             print(f"msg:{msg}")
 
-            #AHRS 정상 작동 확인
-            print(f"\n카트[{M[i].kart.Name}]의 AHRS센서 정상 작동 확인중...")
-            while 1:
-                send(M[i].kart, "ahrs")
+            # #AHRS 정상 작동 확인
+            # print(f"\n카트[{M[i].kart.Name}]의 AHRS센서 정상 작동 확인중...")
+            # while 1:
+            #     send(M[i].kart, "ahrs")
 
-                readable, _, _ = select.select(WorldSockets, [], [], 1)
+            #     readable, _, _ = select.select(WorldSockets, [], [], 1)
                 
-                if not readable:
-                    print("패스")
-                else:
-                    for sock in readable:
-                        data, addr = sock.recvfrom(1024)  # 데이터 수신
-                        msg = data.decode().strip()
+            #     if not readable:
+            #         print("패스")
+            #     else:
+            #         for sock in readable:
+            #             data, addr = sock.recvfrom(1024)  # 데이터 수신
+            #             msg = data.decode().strip()
 
-                    if sock == M[i].kart.socket:
-                        if "[ahrs]" in msg:
-                            msg = msg[6:]
-                            try:
-                                msg = float(msg)
-                                if abs(msg) > 0:
-                                    M[i].kart.AHRS_start = msg
-                                    print("AHRS 정상 작동")
-                                    print(f"작동값:{msg}")
-                                    break
-                                else:
-                                    print("ERROR:AHRS 오류")
-                                    print(f"작동값:{msg}")
-                            except:
-                                print(f"ERROR:메시지 형식 오류")
-                                print(f"msg:{msg}")
-                                print(f"type:{type(msg)}")
+            #         if sock == M[i].kart.socket:
+            #             if "[ahrs]" in msg:
+            #                 msg = msg[6:]
+            #                 try:
+            #                     msg = float(msg)
+            #                     if abs(msg) > 0:
+            #                         M[i].kart.AHRS_start = msg
+            #                         print("AHRS 정상 작동")
+            #                         print(f"작동값:{msg}")
+            #                         break
+            #                     else:
+            #                         print("ERROR:AHRS 오류")
+            #                         print(f"작동값:{msg}")
+            #                 except:
+            #                     print(f"ERROR:메시지 형식 오류")
+            #                     print(f"msg:{msg}")
+            #                     print(f"type:{type(msg)}")
 
-                        elif num not in msg:
-                            print("ERROR:요청하지 않은 메시지")
-                            print(f"msg:{msg}")
+            #             elif num not in msg:
+            #                 print("ERROR:요청하지 않은 메시지")
+            #                 print(f"msg:{msg}")
 
-            #color센서 정상 작동 확인
-            print(f"\n카트[{M[i].kart.Name}]의 Color센서 정상 작동 확인중...")
-            while 1:
-                send(M[i].kart, "Color")
+            # #color센서 정상 작동 확인
+            # print(f"\n카트[{M[i].kart.Name}]의 Color센서 정상 작동 확인중...")
+            # while 1:
+            #     send(M[i].kart, "Color")
                 
-                readable, _, _ = select.select(WorldSockets, [], [], 1)
-                if not readable:
-                    print("패스")
-                else:
-                    for sock in readable:
-                        data, addr = sock.recvfrom(1024)  # 데이터 수신
-                        msg = data.decode().strip()
+            #     readable, _, _ = select.select(WorldSockets, [], [], 1)
+            #     if not readable:
+            #         print("패스")
+            #     else:
+            #         for sock in readable:
+            #             data, addr = sock.recvfrom(1024)  # 데이터 수신
+            #             msg = data.decode().strip()
 
-                    if sock == M[i].kart.socket:
-                        if "[Color]" in msg:
-                            msg = msg[7:]
+            #         if sock == M[i].kart.socket:
+            #             if "[Color]" in msg:
+            #                 msg = msg[7:]
 
-                            lux, msg_r, msg_g, msg_b = msg.split(',')
-                            if abs(int(lux)) > 0 and abs(int(msg_r)) > 0 and abs(int(msg_g)) > 0 and abs(int(msg_b)) > 0:
-                                M[i].kart.color = msg
-                                print("Color 정상 작동")
-                                print(f"작동값:{msg}")
-                                # print(f"현재색깔:{color_define(lux,msg_r,msg_g,msg_b,color_tunning, "None")}")
-                                break
-                            else:
-                                print("ERROR:Color 오류")
-                                print(f"작동값:{msg}")
+            #                 lux, msg_r, msg_g, msg_b = msg.split(',')
+            #                 if abs(int(lux)) > 0 and abs(int(msg_r)) > 0 and abs(int(msg_g)) > 0 and abs(int(msg_b)) > 0:
+            #                     M[i].kart.color = msg
+            #                     print("Color 정상 작동")
+            #                     print(f"작동값:{msg}")
+            #                     # print(f"현재색깔:{color_define(lux,msg_r,msg_g,msg_b,color_tunning, "None")}")
+            #                     break
+            #                 else:
+            #                     print("ERROR:Color 오류")
+            #                     print(f"작동값:{msg}")
 
-                        elif num not in msg:
-                            print("ERROR:요청하지 않은 메시지")
-                            print(f"msg:{msg}")
+            #             elif num not in msg:
+            #                 print("ERROR:요청하지 않은 메시지")
+            #                 print(f"msg:{msg}")
 
             print(f"[{M[i].User_Name}과 연결 완료]\n")
 
 
 def player2kart(U, msg):
+    global rats_life
+    global game_state
+    # if (U.role == "rat" and "enter" in msg):
+    #     send(U.player, "skill activative")
+    #     send(U.kart, "stop")
+        
+    # else:
     if msg in keys_move:
         U.kart.socket.sendto(msg.encode(), (U.kart.Ip, U.kart.Rev_port)) # move
         print(f"Sent to [{U.kart.Name}]ESP: {msg}")
 
-    elif msg == "i":
+    elif msg == "space":
         U.kart.socket.sendto("i".encode(), (U.kart.Ip, U.kart.Rev_port))  # motor OFF
         print(f"Sent to [{U.kart.Name}]ESP: motor OFF")
+
+    elif "enter" in msg:
+        if U.role == "cat":
+            print(f"카트색:{U.kart.color_name}")
+            print(f"카트색(딕셔너리 넘버):{color_relation[U.kart.color_name]}")
+            numm=color_relation[U.kart.color_name]
+            if (numm%2 == 0):
+                send(U.kart, "stop")
+                send(U.player, "사냥구역이 입니다. 주변 8칸을 사냥합니다(5초 간 사냥)")
+
+                for j in rat_list:
+                    print(type(j))
+                    if(color_relation[j.kart.color_name]-color_relation[j.kart.color_name]== 1):
+                        send(U.player,f"{j.User_Name}을 사냥했습니다.")
+                        send(U.kart, "[die]")
+                        rats_life -= 1
+            else:
+                send(U.kart, "stop")
+                send(U.player, "사냥구역이 아닙니다. 패널티(5초 정지)")
+        else: #rat
+            if (color_relation[U.kart.color_name]%2 == 0):
+                if(U.goal==U.kart.color_name):
+                    send(U.kart, "[die]")
+                    rats_life -= 1
+                    if rats_life==0:
+                        game_state=0
+                    print("게임오버, 생명: ", rats_life)
+                else:
+                    send(U.player,f"[목표색|{U.goal}][|{U.kart.color_name}]")
+            else:
+                send(U.player, "해당 구간에서는 목적지를 확인할 수 없습니다.")
+                
     # elif msg == "m":
     #     U.kart.socket.sendto("ahrs".encode(), (U.kart.Ip, U.kart.Rev_port))  # ahrs값
     #     print("ahrs값을 요청하는중...")
@@ -393,22 +442,180 @@ def kart2player(U,msg):
     #         msg=msg[7:]
     #         U.player.socket.sendto(msg.encode(), (U.player.Ip, U.player.Rev_port))  
     # #        print(f"Sent color Value to PC2: {msg}")
-    #         Dao.kart.color = msg
+    #         Dao.kart = msg
     # print(f"2player:{msg}")
-    if "[record]" in msg:
-        msg = msg[8:]
-        histo = msg.split('|')
-        #msg = "0|1234|red|..."
-        #원상형태["현재구간", "최초 연결시간", "현재시간", "왼쪽 모터상태", "오른쪽 모터상태", "방향변환값","변환된 컬러값",  "LUX", "컬러R", "컬러G", "컬러B", "raw방향값"]
-        #최종형태["현재구간", "최초 연결시간", "현재시간", "왼쪽 모터상태", "오른쪽 모터상태", "방향변환값","변환된 컬러값",  "LUX", "컬러R", "컬러G", "컬러B", "raw방향값"]
-        #같음
-        U.driving_record.append(histo)
 
+    if msg in color_all:
+        # msg = msg[8:]
+        # histo = msg.split('|')
+        # #msg = "0|1234|red|..."
+        # #원상형태["현재구간", "최초 연결시간", "현재시간", "왼쪽 모터상태", "오른쪽 모터상태", "방향변환값","변환된 컬러값",  "LUX", "컬러R", "컬러G", "컬러B", "raw방향값"]
+        # #최종형태["현재구간", "최초 연결시간", "현재시간", "왼쪽 모터상태", "오른쪽 모터상태", "방향변환값","변환된 컬러값",  "LUX", "컬러R", "컬러G", "컬러B", "raw방향값"]
+        # #같음
+        # U.driving_record.append(histo)
+
+        # print(f"{U.User_Name}의 color:{msg}")
+        U.kart.color_name=msg
+
+color_all=["mmdf", "red", "blue", "green", "pink", "orange", "sky", "white"]
+color_relation={"mdf":7, "red":2, "blue":6, "green":8, "pink":3, "orange":4, "sky":5, "white":1}
+def color_adjust(U):
+    color_all=["mmdf", "red", "blue", "green", "pink", "orange", "sky", "white"]
+    try:
+        if(U.Type == "User"):
+            pass
+    except:
+        print("wrong type in color_adjust")
+        return
+
+    #6색상
+    stored_colors = []
+
+    # color_adjust상태로 연결시도
+    print("esp32를 컬러보정 상태로 변경중...")
+    while 1:
+        send(U.kart, "[color_adjust]")
+        readable, _, _ = select.select(WorldSockets, [], [], 1)
+
+        if not readable:
+            print("재전송")
+        else:
+            for sock in readable:
+                data, addr = sock.recvfrom(1024)  # 데이터 수신
+                msg = data.decode().strip()
+
+            if sock == U.kart.socket:
+                if "[color_adjust]" in msg:
+                    send(U.kart, "success")
+                    print("ready to adjust")
+                    break
+                else:
+                    print("ERROR:요청하지 않은 메시지")
+                    print(f"msg:{msg}")
+
+    for p in range(8):
+        print(f"{color_all[p]}색상을 보정합니다(진행도: {(p+1)}/{len(color_all)}).")
+        while 1:
+            
+            send(U.kart, "color="+color_all[p])
+            readable, _, _ = select.select(WorldSockets, [], [], 1)
+
+            if not readable:
+                print(f"{color_all[p]}색상값 재요청, p:{p}")
+            else:
+                for sock in readable:
+                    data, addr = sock.recvfrom(1024)  # 데이터 수신
+                    msg = data.decode()
+                    
+                if (sock == U.kart.socket):
+                    if "[raw_color]" in msg:
+                        print(f"원상데이터:{msg}")
+                        msg=msg[12:]
+                        msg=msg.split("|")
+
+                        for i in range(5):
+                            print(f"{i+1}: Name={msg[5*i]}, Lux={msg[5*i+1]}, R={msg[5*i+2]}, G={msg[5*i+3]}, B={msg[5*i+4]}")
+                        
+                        print(f"Average: Name={msg[5*5]}, Lux={msg[5*5+1]}, R={msg[5*5+2]}, G={msg[5*5+3]}, B={msg[5*5+4]}")
+
+                        if (color_all[p] in msg):
+#테스트용 주석
+                            decision =input("Accept this measurement? (y/n): ")
+                        else:
+                            decision = "false"
+
+                        if decision.lower() == 'y':
+                            print(f"저장값: {[msg[5*5], msg[5*5+1], msg[5*5+2], msg[5*5+3], msg[5*5+4]]}")
+                            stored_colors.append([msg[5*5], msg[5*5+1], msg[5*5+2], msg[5*5+3], msg[5*5+4]])
+                            break
+                        else:
+                            print("현재 측정값 거부 재측정시작")
+
+                    else:
+                        print("ERROR:요청하지 않은 메시지")
+                        print(f"msg:{msg}")
+
+        print(f"{color_all}색상 보정 완료")
+        color_all=["mdf", "red", "blue", "green", "pink", "orange", "sky", "white"]
+    print("수집완료")
+
+    msg="color_data"
+    for i in range(len(stored_colors)):
+        msg += f"|{stored_colors[i][0]}|{stored_colors[i][1]}|{stored_colors[i][2]}|{stored_colors[i][3]}|{stored_colors[i][4]}"
+    print(f"형식:{type(stored_colors[0][1])}")
+    sendmsg = msg
+
+    while 1:
+        send(U.kart, sendmsg)
+
+        readable, _, _ = select.select(WorldSockets, [], [], 1)
+
+        if not readable:
+            print("재전송")
+        else:
+            for sock in readable:
+                data, addr = sock.recvfrom(1024)  # 데이터 수신
+                msg = data.decode().strip()
+
+            if sock == U.kart.socket:
+                if "[save]" in msg:
+                    # print(msg)
+                    print("success to save color")
+                    break
+                else:
+                    print("ERROR:요청하지 않은 메시지")
+                    print(f"msg:{msg}")
+
+def goal_set(U):
+    
+    color = color_all[r.choice([1 ,2, 3, 5])]
+    goal=f"[goal]{U.User_Name}의 목표 위치의 색깔은 {color}입니다."
+    send(U.player, goal)
+
+    U.goal=color
+    print(f"{U.User_Name}의 목표색은 [{color}]로 설정되었습니다.")
+    
+def game_play():
+    global game_state
+    global rats_life
+    if game_state != 0:
+        return
+    print(f"[상태|{game_state}]")
+    for i in user_list:
+        if (i.goal != "none"):
+            print(f"[이름|{i.User_Name}]\n역할: {i.role}\n현재색상: {i.kart.color_name}\n목표 색상: {i.goal}")
+        else:
+            print(f"[이름|{i.User_Name}]\n역할: {i.role}\n현재색상: {i.kart.color_name}")
+    while 1:
+        decision=input("게임종료를 인정하시겠습니까?(y/n): ")
+        if decision.lower() == 'y':
+            print("게임종료")
+            game_state = -1
+            return
+        else:
+            print(f"[{decision}]키를 눌렀습니다.\n게임을 계속 진행합니다.")
+            for i in user_list:
+                if (i.goal != "none"):
+                    life=input(f"\n[이름|{i.User_Name}]\n[목숨:{i.life}]을 살리시겠습니까?(y/n)")
+                    if life.lower() == 'y':
+                        i.life = 1
+                        rats_life+=1
+                        game_state = 1
+                        print(f"[이름|{i.User_Name}]\n[목숨:{i.life}]\n")
+                    else:
+                        i.life = 0
+                        print(f"[이름|{i.User_Name}]\n[목숨:{i.life}]\n")
+            game_state = 1
+            print("[게임상태:{game_state}]\n 게임재게")
+            return
 ##########################################################################################################
 #실행 시 변경해야 할 부분
 
 WorldSockets=[]
 keys_move=["w","a","s","d"]
+
+game_state=1
+
 
 """
 #함수 자동화 필요(컬러센서 마다 편차 존재)
@@ -424,20 +631,20 @@ color_tunning=[["white", 920, 2500, 1700, 1300],
 Dao = User(
         User_Name="almaeng",
         Name_kart="핑크베놈", Ip_kart="192.168.0.2", Send_port_kart="4213", Rev_port_kart="4212",
-        Name_player="다오", Ip_player="192.168.0.13", Send_port_player="5005", Rev_port_player="5006"
+        Name_player="다오", Ip_player="192.168.0.13", Send_port_player="5005", Rev_port_player="5006", 
+        role="cat"
     )
-
-""""
 Bazzi = User(
         User_Name="sama",
-        Name_kart="버스트", Ip_kart="128.0.0.3", Send_port_kart="7000", Rev_port_kart="7001",
-        Name_player="배찌", Ip_player="128.0.0.4", Send_port_player="8000", Rev_port_player="8001"
+        Name_kart="버스트", Ip_kart="192.168.0.12", Send_port_kart="7000", Rev_port_kart="7001",
+        Name_player="배찌", Ip_player="192.168.0.21", Send_port_player="8000", Rev_port_player="8001",
+        role="rat"
     )
-"""
+
 
 #통신하는 모든 객체들
-macron=[Dao]
-#macron=[Dao, Bazzi]
+#macron=[Dao]
+macron=[Dao, Bazzi]
 
 ##########################################################################################################
 #동작부분
@@ -453,8 +660,30 @@ print("Waiting for key input from Player and data from Kart...")
 
 connecting(macron)
 
+
+for i in user_list:
+    if (i.role=="rat"):
+        goal_set(i)
+        rats_life+=1
+        rat_list.append(i)
+
+
+for i in user_list:
+    print("user의 kart 색상 보정")
+    color_adjust(i)
+color_all=["mdf", "red", "blue", "green", "pink", "orange", "sky", "white"]
+
+
 while True:
     try:
+        if (rats_life==0):
+            game_state == 0
+            print(f"게임값:{game_state}")
+
+        game_play()            
+        if(game_state==-1):
+            break
+
         # select를 사용하여 먼저 오는 데이터 처리
         readable, _, _ = select.select(WorldSockets, [], [])
 
@@ -463,24 +692,29 @@ while True:
             msg = data.decode().strip()
 
             for i in range(len(macron)):
-                try:
+                # try:
                     if (macron[i].Type == "User"):
+                        
                         # player에서 온 키 입력 처리
                         if sock == macron[i].player.socket:
                             player2kart(macron[i], msg)
                         # kart에서 온 데이터 처리
                         elif sock == macron[i].kart.socket:
+                            # print("kart에서 데이터가 옴!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11")
                             kart2player(macron[i], msg)
+                        send(macron[i].kart,"[name]")
+
 
                     elif (macron[i].Type == "Infra"):
                         # infra에서 온 데이터 처리
                         if sock == macron[i].socket:
                             send(macron[i],msg)
 
-                except:
-                    print("ERROR:데이터가공 오류!")
-                    print(f"ERROR:{msg}")
-                    pass
+                # except:
+                #     print("ERROR:데이터가공 오류!")
+                #     print(f"ERROR:[{msg}]")
+                #     print(f"길이:{len(msg)}")
+                #     pass
 
     except KeyboardInterrupt:
         print("Exiting...")
@@ -490,3 +724,10 @@ while True:
             sock.close()
             print(sock)
         break
+
+print("Exiting...")
+#csv파일 저장
+csv_file_save(macron)
+for sock in WorldSockets:
+    sock.close()
+    print(sock)
