@@ -1,53 +1,41 @@
-##########################################################################################################
-#불러오는 모듈
+#---모듈 불러오기---
 import socket
 import select
-
 import os
-
 import random as r
 
-<<<<<<< HEAD
 import json
 import csv
+
+import math
+
+#---테스트 용 리스트--
 rats_life=0
 rat_list=[]
-=======
-import math
->>>>>>> feature/junction
-##########################################################################################################
-#클래스
 
+#---클래스 정의---
 class Common:
     num = 0
-
     def __init__(self, Ip = "", Send_port = "", Rev_port = ""):
 #        print("[소캣설정 시작]")
-
         Common.num += 1
-
         self.Priority = Common.num
 #        print(f"우선순위: {self.Priority}")
-
         if not Ip:
             Ip = input("ip가 설정되지 않았습니다.ex) 0.0.0.0: ")
         self.Ip = Ip
 #        print(f"ip: {self.Ip}")
-
         if not Send_port:
             Send_port = input("송신포트가 설정되지 않았습니다.ex) 5000: ")
         self.Send_port = int(Send_port)
 #        print(f"송신포트: {self.Send_port}")
-
         if not Rev_port:
             Rev_port = input("수신포트가 설정되지 않았습니다.ex) 5001: ")
         self.Rev_port = int(Rev_port)
 #        print(f"수신포트: {self.Rev_port}\n")
-
-
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind(("", self.Send_port))
-
+        # 월드 소켓 리스트에 소켓 추가
         WorldSockets.append(self.socket)
 
 class Player(Common):
@@ -55,20 +43,17 @@ class Player(Common):
 #        print("[Player 설정시작]")
         self.Type = "Player"
 #        print(f"객체 타입: {self.Type}")
-
         if not Name:
             Name = input("플레이어의 이름이 설정되지 않았습니다.ex) 다오: ")
         self.Name=Name
 #        print(f"플레이어 이름: {self.Name}")
-
         super().__init__(Ip, Send_port, Rev_port)
 
 class kart(Common):
-    def __init__(self, Name="", Ip="", Send_port="", Rev_port=""):
+    def __init__(self, Name="", Ip="", Send_port="", Rev_port="", ):
 #        print("[Kart 설정시작]")
         self.Type = "Kart"
 #        print(f"객체 타입: {self.Type}")
-
         if not Name:
             Name = input("카트의 이름이 설정되지 않았습니다.ex) 코튼: ")
         self.Name=Name
@@ -90,7 +75,6 @@ class Infra(Common):
 #        print("[Infra 작성시작]")
         self.Type = "Infra"
 #        print(f"객체 타입: {self.Type}")
-
         if not Name:
             Name = input("인프라의 이름이 설정되지 않았습니다.ex) 신호등1: ")
         self.Name=Name
@@ -235,6 +219,9 @@ def sending_and_recv_check(target_device, data_to_send, MAX_RETRIES=1024):
     print(f"{MAX_RETRIES}번의 확인 시도가 실패함. 처리를 건너뜀")
     return False
 
+#       print("-----------------------------")
+
+#---함수 정의---
 def send(target, msg):
     target.socket.sendto(msg.encode(), (target.Ip, target.Rev_port))
     # print(f"{target.Name}에게 {msg}를 보냈습니다.")
@@ -286,7 +273,6 @@ def csv_file_save(MACRON:list):
             file_path = "c:\\Users\\PC-16\\Desktop\\V2I_Kart\\PC_UNO_Operator\\data\\" 
             base_name = qual + MACRON[i].User_Name 
             file_name = get_unique_filename(file_path,base_name)
-
 
             with open(file_name, 'w', newline='', encoding='utf-8') as f:
                 writer = csv.writer(f)
@@ -435,7 +421,6 @@ def connecting(M:list):
 
 
 def player2kart(U, msg):
-<<<<<<< HEAD
     global rats_life
     global game_state
     # if (U.role == "rat" and "enter" in msg):
@@ -488,7 +473,7 @@ def player2kart(U, msg):
     # elif msg == "c":
     #     U.kart.socket.sendto("Color".encode(), (U.kart.Ip, U.kart.Rev_port))  # ahrs값
     #     print("color값을 요청하는중...")
-=======
+    '''
     if not U.is_awaiting_exchange:
         if msg in keys_move:
             U.kart.socket.sendto(msg.encode(), (U.kart.Ip, U.kart.Rev_port)) # move
@@ -503,13 +488,13 @@ def player2kart(U, msg):
         # elif msg == "c":
         #     U.kart.socket.sendto("Color".encode(), (U.kart.Ip, U.kart.Rev_port))  # ahrs값
         #     print("color값을 요청하는중...")
->>>>>>> feature/junction
 
         else:
             print(f"undefine key value: {msg}")
     else:
         U.kart.socket.sendto("i".encode(), (U.kart.Ip, U.kart.Rev_port))  # motor OFF
         print(f"Sent to [{U.kart.Name}]ESP: motor OFF, Because awaiting exchange.")
+    '''
 
 """
 def color_define(lux,r,g,b,tuning:list, U):
@@ -809,20 +794,16 @@ while True:
                             player2kart(macron[i], msg)
                         # kart에서 온 데이터 처리
                         elif sock == macron[i].kart.socket:
-<<<<<<< HEAD
                             # print("kart에서 데이터가 옴!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11")
-                            kart2player(macron[i], msg)
-                        send(macron[i].kart,"[name]")
-
-=======
                             # 메시지 타입을 먼저 확인하여 분배
                             if msg.startswith("[junction_log]"):
                                 handle_kart_junction_log(macron[i], msg) # 별도 함수 호출
                             else:
                                 kart2player(macron[i], msg) # 기존 kart2player는 다른 메시지 처리
+                        send(macron[i].kart,"[name]")
                         
                         macron[i].segment_detection()
->>>>>>> feature/junction
+
 
                     elif (macron[i].Type == "Infra"):
                         # infra에서 온 데이터 처리
