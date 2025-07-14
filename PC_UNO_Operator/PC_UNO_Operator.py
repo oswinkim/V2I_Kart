@@ -85,8 +85,8 @@ class Infra(Common):
 class User:
     def __init__(self,
                  User_Name="",
-                 Name_kart="", Ip_kart="", Send_port_kart="", Rev_port_kart="",
-                 Name_player="", Ip_player="", Send_port_player="", Rev_port_player="",
+                 Name_kart="", Ip_kart="", Send_port_kart="", Recv_port_kart="",
+                 Name_player="", Ip_player="", Send_port_player="", Recv_port_player="",
                  role="jobless", goal="none"):
 #        print("-----------------------------")
 #        print("[User 설정시작]")
@@ -101,8 +101,8 @@ class User:
         self.life = 1
 #        print(f"유저 이름: {self.User_Name}\n")
 
-        self.kart = kart(Name_kart, Ip_kart, Send_port_kart, Rev_port_kart)
-        self.player = Player(Name_player, Ip_player, Send_port_player, Rev_port_player)
+        self.kart = kart(Name_kart, Ip_kart, Send_port_kart, Recv_port_kart)
+        self.player = Player(Name_player, Ip_player, Send_port_player, Recv_port_player)
 
         self.driving_record = [ [f'User_Name={self.User_Name}', 
                                  f'Name_kart={self.kart.Name}', 
@@ -125,9 +125,8 @@ class User:
                                  "컬러R", "컬러G", "컬러B", 
                                  "raw방향값"]]
 
-
         print(f"<유저[{User_Name}] 기본 설정 완료>")
-#        print("-----------------------------")
+#       print("-----------------------------")
         self.junction_count = 0
         self.junction_range = 4
         self.junction_select_log = [0 for _ in range(self.junction_range)]
@@ -162,9 +161,7 @@ class User:
                 self.is_awaiting_exchange = True
             self.last_segment = current_segment
 
-##########################################################################################################
-#함수
-
+#---함수 정의--
 def handle_kart_junction_log(user_obj, received_msg):
     print(f"INFO: Kart ({user_obj.kart.Name})로부터 Junction Log 수신: {received_msg}")
     try:
@@ -176,7 +173,7 @@ def handle_kart_junction_log(user_obj, received_msg):
         print(f"INFO: Kart ({user_obj.kart.Name})에게 Junction Log 수신 성공 응답 보냄.")
         return True
     except Exception as e:
-        print(f"ERROR: Kart Junction Log 처리 중 오류 발생: {e}")
+        print(f"WARNING: Kart Junction Log 처리 중 오류 발생: {e}")
         return False
 
 def check_all_users_awaiting_exchange(user_list):
@@ -214,7 +211,7 @@ def sending_and_recv_check(target_device, data_to_send, MAX_RETRIES=1024):
                     send(target_device, "success")
                     return True
                 else:
-                    print(f"ERROR: 송신과 관계없는 메시지가 수신됨({target_device}: {msg})")
+                    print(f"WARNING: 송신과 관계없는 메시지가 수신됨({target_device}: {msg})")
         print(f"INFO: {target_device}로부터 수신이 확인되지 않음. 재전송...")
     print(f"{MAX_RETRIES}번의 확인 시도가 실패함. 처리를 건너뜀")
     return False
@@ -251,17 +248,17 @@ def csv_file_save(MACRON:list):
         if (MACRON[i].Type == "User"):
             qual = 0
             while 1:
-                qual = input(f"{MACRON[i].User_Name}의 데이터 수집 결과 결정 (GOOD:2, NOMAL:1, BAD:0)\n입력: ")
+                qual = input(f"INFO: {MACRON[i].User_Name}의 데이터 수집 결과 결정 (GOOD:2, NOMAL:1, BAD:0)\n입력: ")
                 try:
                     qual=int(qual)
                     if 0<=qual<=2:
-                        final = input(f"{qual}을 선택하신게 맞다면 1을 아니라면 0을 눌러주세요.\n입력:")
+                        final = input(f"INFO: {qual}을 선택하신게 맞다면 1을 아니라면 0을 눌러주세요.\n입력:")
                         print(f"{final}을 입력하셨습니다.")
                         break
                     else:
-                        print(f"{qual}을 입력하셨습니다.\n 0,1,2 중에 입력해주세요")
+                        print(f"WARNING: {qual}을 입력하셨습니다.\n 0,1,2 중에 입력해주세요")
                 except:
-                    print(f"입력하신 자료형은 정수가 아닙니다.({type(qual)}형으로 입력됨)")
+                    print(f"WARNING: 입력하신 자료형은 정수가 아닙니다.({type(qual)}형으로 입력됨)")
 
             if qual == 0:
                 qual = "[bad]"
@@ -291,64 +288,75 @@ def csv_file_save(MACRON:list):
                     writer.writerow(row)  # 각 행 쓰기
                 print(f"저장된 데이터 파일명: {file_name}")
 
-def connecting(M:list):
+def connecting(device_list:list):
     #난수 발생
-    num = str(r.randrange(10,100))
-    
-    for i in range(len(M)):
-        if (M[i].Type == "User"):
-            print(f"[{M[i].User_Name}과 연결 시작]")
+    key_num = str(r.randrange(10,100))
+
+    '''    
+    for _ in range(MAX_RETRIES):
+        send(target_device, data_to_send)
+
+        readable_sockets, _, _ = select.select(WorldSockets, [], [], 1)
+        for sock in readable_sockets:
+            if sock == target_device.socket: # 현재 처리 중인 디바이스의 소켓인지 확인
+                data, addr = sock.recvfrom(1024)
+                msg = data.decode().strip()
+                if msg == "success":
+                    print(f"INFO: {target_device}가 수신 성공")
+                    send(target_device, "success")
+                    return True
+                else:
+                    print(f"WARNING: 송신과 관계없는 메시지가 수신됨({target_device}: {msg})")
+        print(f"INFO: {target_device}로부터 수신이 확인되지 않음. 재전송...")
+    print(f"{MAX_RETRIES}번의 확인 시도가 실패함. 처리를 건너뜀")
+    return False'''
+
+    for device in range(len(device_list)):
+        if (device_list[device].Type == "User"):
+            user_name = device_list[device].User_Name
+            player_device = device_list[device].player
+            kart_device = device_list[device].kart
+            print(f"DEBUG: 유저{user_name}와 연결 시작")
 
             #플레이어 연결
-            print(f"\n플레이어[{M[i].player.Name}]와 연결중...")
-            while 1:
+            print(f"DEBUG: 유저 {user_name}의 PLAYER와 연결 시작...")
+            while True:
                 #난수 전송
-                send(M[i].player, num)
-
+                send(player_device, key_num)
                 readable, _, _ = select.select(WorldSockets, [], [], 1)
-
-                if not readable:
-                    print("재전송")
-                else:
+                if readable:
                     for sock in readable:
                         data, addr = sock.recvfrom(1024)  # 데이터 수신
                         msg = data.decode().strip()
-
-                    if sock == M[i].player.socket:
-                        if num in msg:
-                            print("연결성공!")
-                            send(M[i].player, "success")
+                    if sock == player_device.socket:
+                        if key_num in msg:
+                            print(f"DEBUG: 유저 {user_name}의 PLAYER와 연결성공!")
+                            send(player_device, "success")
                             break
                         else:
-                            print("ERROR:요청하지 않은 메시지")
-                            print(f"msg:{msg}")
-
+                            print(f"WARNING: 유저 {user_name}의 PLAYER의 연결과 관계없는 메시지가 수신됨({msg})")
+                else:
+                    print(f"WARNING: 유저 {user_name}의 PLAYER로부터 수신이 확인되지 않음. 재전송...")
             #카트 연결
-            print(f"\n카트[{M[i].kart.Name}]와 연결중...")
-            while 1:
+            print(f"DEBUG: 유저 {user_name}의 KART와 연결 시작...")
+            while True:
                 #난수 전송
-                send(M[i].kart, num)
-
+                send(kart_device, key_num)
                 readable, _, _ = select.select(WorldSockets, [], [], 1)
-
-                if not readable:
-                    print("재전송")
-
-                else:
+                if readable:
                     for sock in readable:
                         data, addr = sock.recvfrom(1024)  # 데이터 수신
                         msg = data.decode().strip()
-
-                    
-                    if sock == M[i].kart.socket:
-                        if num in msg:
-                            print("연결성공!")
-                            send(M[i].kart, "success")
+                    if sock == kart_device.socket:
+                        if key_num in msg:
+                            print(f"DEBUG: 유저 {user_name}의 KART와 연결성공!")
+                            send(player_device, "success")
                             break
                         else:
-                            print("ERROR:요청하지 않은 메시지")
-                            print(f"msg:{msg}")
-
+                            print(F"WARNING: 유저 {user_name} KART의 연결과  관계없는 메시지가 수신됨({msg})")
+                else:
+                    print(f"WARNING: 유저 {user_name}의 KART로부터 수신이 확인되지 않음. 재전송...")
+                
             # #AHRS 정상 작동 확인
             # print(f"\n카트[{M[i].kart.Name}]의 AHRS센서 정상 작동 확인중...")
             # while 1:
@@ -374,15 +382,15 @@ def connecting(M:list):
             #                         print(f"작동값:{msg}")
             #                         break
             #                     else:
-            #                         print("ERROR:AHRS 오류")
+            #                         print("WARNING:AHRS 오류")
             #                         print(f"작동값:{msg}")
             #                 except:
-            #                     print(f"ERROR:메시지 형식 오류")
+            #                     print(f"WARNING:메시지 형식 오류")
             #                     print(f"msg:{msg}")
             #                     print(f"type:{type(msg)}")
 
             #             elif num not in msg:
-            #                 print("ERROR:요청하지 않은 메시지")
+            #                 print("WARNING:요청하지 않은 메시지")
             #                 print(f"msg:{msg}")
 
             # #color센서 정상 작동 확인
@@ -410,14 +418,14 @@ def connecting(M:list):
             #                     # print(f"현재색깔:{color_define(lux,msg_r,msg_g,msg_b,color_tunning, "None")}")
             #                     break
             #                 else:
-            #                     print("ERROR:Color 오류")
+            #                     print("WARNING:Color 오류")
             #                     print(f"작동값:{msg}")
 
             #             elif num not in msg:
-            #                 print("ERROR:요청하지 않은 메시지")
+            #                 print("WARNING:요청하지 않은 메시지")
             #                 print(f"msg:{msg}")
 
-            print(f"[{M[i].User_Name}과 연결 완료]\n")
+            print(f"DEBUG: 유저{device_list[device].User_Name}의 모든 DEVICE와 연결 성공\n")
 
 
 def player2kart(U, msg):
@@ -553,113 +561,113 @@ def kart2player(U,msg):
 
 color_all=["mmdf", "red", "blue", "green", "pink", "orange", "sky", "white"]
 color_relation={"mdf":7, "red":2, "blue":6, "green":8, "pink":3, "orange":4, "sky":5, "white":1}
-def color_adjust(U):
-    color_all=["mmdf", "red", "blue", "green", "pink", "orange", "sky", "white"]
-    try:
-        if(U.Type == "User"):
-            pass
-    except:
-        print("wrong type in color_adjust")
+
+def color_adjust(User):
+    if(User.Type == "User"):
+        pass
+    else: 
+        print("WARNING: wrong type in color_adjust")
         return
 
+    all_color_type = ["mmdf", "red", "blue", "green", "pink", "orange", "sky", "white"]
     #6색상
     stored_colors = []
+    initial_msg = "[color_adjust]"
+    user_name = User.User_Name
+    kart = User.kart
 
     # color_adjust상태로 연결시도
-    print("esp32를 컬러보정 상태로 변경중...")
-    while 1:
-        send(U.kart, "[color_adjust]")
+    print(f"DEBUG: {user_name}의 KART를 컬러보정 상태로 변경중...")
+    #플레이어 연결
+    while True:
+        #난수 전송
+        send(kart, initial_msg)
         readable, _, _ = select.select(WorldSockets, [], [], 1)
-
-        if not readable:
-            print("재전송")
-        else:
+        if readable:
             for sock in readable:
                 data, addr = sock.recvfrom(1024)  # 데이터 수신
                 msg = data.decode().strip()
-
-            if sock == U.kart.socket:
-                if "[color_adjust]" in msg:
-                    send(U.kart, "success")
-                    print("ready to adjust")
+            if sock == kart.socket:
+                if initial_msg in msg:
+                    print(f"DEBUG: 유저 {user_name}의 KART 색상 조정 준비 완료")
+                    send(kart, "success")
                     break
                 else:
-                    print("ERROR:요청하지 않은 메시지")
-                    print(f"msg:{msg}")
-
-    for p in range(8):
-        print(f"{color_all[p]}색상을 보정합니다(진행도: {(p+1)}/{len(color_all)}).")
-        while 1:
-            
-            send(U.kart, "color="+color_all[p])
+                    print(f"WARNING: 유저 {user_name}의 KART 색상 조정과 관계없는 메시지가 수신됨({msg})")
+        else:
+            print(f"WARNING: 유저 {user_name}의 KART로부터 수신이 확인되지 않음. 재전송...")
+    
+    print(f"DEBUG: 유저 {user_name}의 KART 색상 조정 시작")
+    initial_adjust_msg = "[raw_color]"
+    pass_color_adjust = False
+    for color_id in range(len(all_color_type)):
+        print(f"INFO: 유저 {user_name}의 KART의 {all_color_type[color_id]}색상을 보정...({(color_id+1)}/{len(all_color_type)})")
+        adjust_msg_convention = "color="+all_color_type[color_id]
+        if pass_color_adjust:
+            break
+        while True:
+            send(kart, adjust_msg_convention)
             readable, _, _ = select.select(WorldSockets, [], [], 1)
-
-            if not readable:
-                print(f"{color_all[p]}색상값 재요청, p:{p}")
-            else:
+            if readable:
                 for sock in readable:
                     data, addr = sock.recvfrom(1024)  # 데이터 수신
-                    msg = data.decode()
-                    
-                if (sock == U.kart.socket):
-                    if "[raw_color]" in msg:
-                        print(f"원상데이터:{msg}")
-                        msg=msg[12:]
-                        msg=msg.split("|")
-
+                    msg = data.decode().strip()
+                if sock == kart.socket:
+                    if initial_adjust_msg in msg:
+                        print(f"DEBUG: ---유저 {user_name}의 {all_color_type[color_id]}의 원본 색상 데이터---")
+                        print(f"Origin:  Name={msg[5*5]}, Lux={msg[5*5+1]}, R={msg[5*5+2]}, G={msg[5*5+3]}, B={msg[5*5+4]}")
+                        print(f"Average: Name={msg[5*5]}, Lux={msg[5*5+1]}, R={msg[5*5+2]}, G={msg[5*5+3]}, B={msg[5*5+4]}")
+                        msg = msg[12:]
+                        msg = msg.split("|")
                         for i in range(5):
                             print(f"{i+1}: Name={msg[5*i]}, Lux={msg[5*i+1]}, R={msg[5*i+2]}, G={msg[5*i+3]}, B={msg[5*i+4]}")
-                        
-                        print(f"Average: Name={msg[5*5]}, Lux={msg[5*5+1]}, R={msg[5*5+2]}, G={msg[5*5+3]}, B={msg[5*5+4]}")
-
-                        if (color_all[p] in msg):
-#테스트용 주석
-                            decision =input("Accept this measurement? (y/n): ")
+                        print(f"DEBUG: -----------------------------------------")
+                        if (all_color_type[color_id] in msg):
+                            measurement_accept = input(f"INFO: 유저 {user_name}의 현재 {all_color_type[color_id]}의 색상 값을 반영하시겠습니까? (y/n/p): ")
                         else:
-                            decision = "false"
-
-                        if decision.lower() == 'y':
-                            print(f"저장값: {[msg[5*5], msg[5*5+1], msg[5*5+2], msg[5*5+3], msg[5*5+4]]}")
+                            measurement_accept = "false"
+                        if measurement_accept.lower() == 'y':
                             stored_colors.append([msg[5*5], msg[5*5+1], msg[5*5+2], msg[5*5+3], msg[5*5+4]])
+                            print(f"DEBUG: 유저 {user_name}에 반영된 {all_color_type[color_id]}의 색상 값: {[msg[5*5], msg[5*5+1], msg[5*5+2], msg[5*5+3], msg[5*5+4]]}")
+                            print(f"DEBUG: 유저 {user_name}에 반영된 {all_color_type[color_id]}의 색상 값: {stored_colors[::-1]}")
+                            break
+                        elif measurement_accept.lower() == 'p':
+                            pass_color_adjust = True
                             break
                         else:
-                            print("현재 측정값 거부 재측정시작")
-
+                            print(f"INFO: 유저 {user_name}의 현재 {all_color_type[color_id]}의 색상값 거부 및 재측정 시작")
                     else:
-                        print("ERROR:요청하지 않은 메시지")
-                        print(f"msg:{msg}")
+                        print(f"WARNING: 유저 {user_name}의 KART 색상 조정과 관계없는 메시지가 수신됨({msg})")
+            else:
+                print(f"WARNING: 유저 {user_name}의 KART로부터 수신이 확인되지 않음. {all_color_type[color_id]}색상값 재요청...(color_id: {color_id})")
 
-        print(f"{color_all}색상 보정 완료")
-        color_all=["mdf", "red", "blue", "green", "pink", "orange", "sky", "white"]
-    print("수집완료")
+    print(f"DEBUG: 유저 {user_name}의 모든 색상({all_color_type}) 보정 완료")
+    all_color_type=["mdf", "red", "blue", "green", "pink", "orange", "sky", "white"]
+    print("유저 {user_name}의 색상 정보 수집 완료")
 
     msg="color_data"
     for i in range(len(stored_colors)):
         msg += f"|{stored_colors[i][0]}|{stored_colors[i][1]}|{stored_colors[i][2]}|{stored_colors[i][3]}|{stored_colors[i][4]}"
-    print(f"형식:{type(stored_colors[0][1])}")
-    sendmsg = msg
-
-    while 1:
-        send(U.kart, sendmsg)
-
+    print(f"DEBUG: 유저 {user_name}에게 전송될 색상 보정 메세지:{type(stored_colors[0][1])}")
+    adjusted_color_msg = msg
+    while True:
+        #난수 전송
+        send(kart, adjusted_color_msg)
         readable, _, _ = select.select(WorldSockets, [], [], 1)
-
-        if not readable:
-            print("재전송")
-        else:
+        if readable:
             for sock in readable:
                 data, addr = sock.recvfrom(1024)  # 데이터 수신
                 msg = data.decode().strip()
-
-            if sock == U.kart.socket:
+            if sock == kart.socket:
                 if "[save]" in msg:
-                    # print(msg)
-                    print("success to save color")
+                    print(f"DEBUG: 유저 {user_name}의 KART에 조정된 색상 저장 완료")
+                    #send(kart, "success")
                     break
                 else:
-                    print("ERROR:요청하지 않은 메시지")
-                    print(f"msg:{msg}")
-
+                    print(f"WARNING: 유저 {user_name}의 KART 색상 조정과 관계없는 메시지가 수신됨({msg})")
+        else:
+            print(f"WARNING: 유저 {user_name}의 KART로부터 수신이 확인되지 않음. 재전송...")
+    
 def goal_set(U):
     
     color = color_all[r.choice([1 ,2, 3, 5])]
@@ -710,7 +718,6 @@ keys_move=["w","a","s","d"]
 
 game_state=1
 
-
 """
 #함수 자동화 필요(컬러센서 마다 편차 존재)
 color_tunning=[["white", 920, 2500, 1700, 1300], 
@@ -721,39 +728,36 @@ color_tunning=[["white", 920, 2500, 1700, 1300],
                ["blue", 550, 600, 900, 900],
                ["sky", 850, 1300, 1300, 1100]]
 """
-               
+
 Dao = User(
         User_Name="almaeng",
-        Name_kart="핑크베놈", Ip_kart="192.168.0.2", Send_port_kart="4213", Rev_port_kart="4212",
-        Name_player="다오", Ip_player="192.168.0.13", Send_port_player="5005", Rev_port_player="5006", 
+        Name_kart="핑크베놈", Ip_kart="192.168.0.2",    Send_port_kart="4213",   Recv_port_kart="4212",
+        Name_player="다오",   Ip_player="192.168.0.13", Send_port_player="5005", Recv_port_player="5006", 
         role="cat"
     )
 Bazzi = User(
         User_Name="sama",
-        Name_kart="버스트", Ip_kart="192.168.0.12", Send_port_kart="7000", Rev_port_kart="7001",
-        Name_player="배찌", Ip_player="192.168.0.21", Send_port_player="8000", Rev_port_player="8001",
+        Name_kart="버스트", Ip_kart="192.168.0.12",   Send_port_kart="7000",   Recv_port_kart="7001",
+        Name_player="배찌", Ip_player="192.168.0.21", Send_port_player="8000", Recv_port_player="8001",
         role="rat"
     )
 
+#통신하는 모든 디바이스들
+#device_list = [Dao]
+device_list = [Dao, Bazzi]
 
-#통신하는 모든 객체들
-#macron=[Dao]
-macron=[Dao, Bazzi]
-
-##########################################################################################################
-#동작부분
+#---메인 앱---
+print("------------------------------------------------------------------------------------------")
+print("INFO: *정상적으로 연결되지 않을 경우, 네트워크 설정을 확인하십시오.(공용 -> 개인 네트워크)")
+print("------------------------------------------------------------------------------------------")
+print("Waiting for key input from Player and data from Kart...")
 
 #user분리
 user_list=[]
-for i in macron:
+for i in device_list:
     if i.Type == "User":
         user_list.append(i)
-
-print("*정상적으로 연결되지 않을 경우 네트 워크 설정을 확인하십시오.(공용 -> 개인 네트워크)")
-print("Waiting for key input from Player and data from Kart...")
-
-connecting(macron)
-
+connecting(device_list)
 
 for i in user_list:
     if (i.role=="rat"):
@@ -761,12 +765,10 @@ for i in user_list:
         rats_life+=1
         rat_list.append(i)
 
-
 for i in user_list:
     print("user의 kart 색상 보정")
     color_adjust(i)
 color_all=["mdf", "red", "blue", "green", "pink", "orange", "sky", "white"]
-
 
 while True:
     try:
@@ -785,34 +787,34 @@ while True:
             data, addr = sock.recvfrom(1024)  # 데이터 수신
             msg = data.decode().strip()
 
-            for i in range(len(macron)):
+            for i in range(len(device_list)):
                 # try:
-                    if (macron[i].Type == "User"):
+                    if (device_list[i].Type == "User"):
                         
                         # player에서 온 키 입력 처리
-                        if sock == macron[i].player.socket:
-                            player2kart(macron[i], msg)
+                        if sock == device_list[i].player.socket:
+                            player2kart(device_list[i], msg)
                         # kart에서 온 데이터 처리
-                        elif sock == macron[i].kart.socket:
-                            # print("kart에서 데이터가 옴!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11")
+                        elif sock == device_list[i].kart.socket:
+                            # print("kart에서 데이터가 수신됨!!!!!!!!!!!!!!!")
                             # 메시지 타입을 먼저 확인하여 분배
                             if msg.startswith("[junction_log]"):
-                                handle_kart_junction_log(macron[i], msg) # 별도 함수 호출
+                                handle_kart_junction_log(device_list[i], msg) # 별도 함수 호출
                             else:
-                                kart2player(macron[i], msg) # 기존 kart2player는 다른 메시지 처리
-                        send(macron[i].kart,"[name]")
+                                kart2player(device_list[i], msg) # 기존 kart2player는 다른 메시지 처리
+                        send(device_list[i].kart,"[name]")
                         
-                        macron[i].segment_detection()
+                        device_list[i].segment_detection()
 
 
-                    elif (macron[i].Type == "Infra"):
+                    elif (device_list[i].Type == "Infra"):
                         # infra에서 온 데이터 처리
-                        if sock == macron[i].socket:
-                            send(macron[i],msg)
+                        if sock == device_list[i].socket:
+                            send(device_list[i],msg)
 
                 # except:
-                #     print("ERROR:데이터가공 오류!")
-                #     print(f"ERROR:[{msg}]")
+                #     print("WARNING:데이터가공 오류!")
+                #     print(f"WARNING:[{msg}]")
                 #     print(f"길이:{len(msg)}")
                 #     pass
 
@@ -821,7 +823,7 @@ while True:
     except KeyboardInterrupt:
         print("Exiting...")
         #csv파일 저장
-        csv_file_save(macron)
+        csv_file_save(device_list)
         for sock in WorldSockets:
             sock.close()
             print(sock)
@@ -829,7 +831,7 @@ while True:
 
 print("Exiting...")
 #csv파일 저장
-csv_file_save(macron)
+csv_file_save(device_list)
 for sock in WorldSockets:
     sock.close()
     print(sock)
