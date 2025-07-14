@@ -158,7 +158,6 @@ void data(
     Serial.printf("Sending data: %s\n", msgBuffer);
 }
 
-<<<<<<< HEAD
 void send_raw_color(String name){
   String Tuning[6][5];
   int lux_avg = 0, r_avg = 0, g_avg = 0, b_avg = 0;
@@ -304,8 +303,9 @@ void color_name(){
       udp.beginPacket(PC1_IP, sendPort);
       udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
       udp.endPacket();
-      Serial.printf("Sending data: %s\n", msgBuffer);        }
-=======
+      Serial.printf("Sending data: %s\n", msgBuffer);        
+}
+
 void motor_stop(){
     ledcWrite(MOTOR_A_IN1, 0);
     ledcWrite(MOTOR_A_IN2, 0);
@@ -486,7 +486,6 @@ void control_by_segment(int segment = 10) {
           last_segment = segment;
         }
     }
->>>>>>> feature/junction
 }
 
 void setup() {
@@ -664,14 +663,7 @@ void loop() {
 
         }
     }
-<<<<<<< HEAD
-    // if(aa==1){
-    //   color_name();
-    // }
-=======
-
-    int current_segment = 32; //테스트용값
-    conected_with_server = aa;
-    control_by_segment(current_segment);
->>>>>>> feature/junction
+    //int current_segment = 32; //테스트용값
+    //conected_with_server = aa;
+    //control_by_segment(current_segment);
 }
