@@ -61,6 +61,27 @@ Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_154MS, TCS347
 unsigned long start_time = 0;
 unsigned long current_time = 0;
 
+
+bool conected_with_server = true;
+
+int start_segment = 20;
+int end_segment   = 130; //확인 필요
+int log_exchange_segment = 70; //확인 필요
+int last_segment = 0;
+
+bool log_exchange_mode = false;
+int my_junction_log[4] = {0,0,0,0};
+;int my_junction_log_index = 0;
+int others_junction_log[4] = {0,0,0,0};
+
+unsigned long started_time  = 0;
+unsigned long ended_time = 0;
+unsigned long duration_time = 0;
+unsigned long playtime = 0;
+unsigned int penalty_time  = 3000;
+unsigned int penalty_count = 0;
+
+
 // 색 판단 함수
 String color_define(uint16_t lux, uint16_t r, uint16_t g, uint16_t b,  int tuningSize) {
   int raw[4] = {(int)lux, (int)r, (int)g, (int)b};
@@ -137,6 +158,7 @@ void data(
     Serial.printf("Sending data: %s\n", msgBuffer);
 }
 
+<<<<<<< HEAD
 void send_raw_color(String name){
   String Tuning[6][5];
   int lux_avg = 0, r_avg = 0, g_avg = 0, b_avg = 0;
@@ -283,6 +305,188 @@ void color_name(){
       udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
       udp.endPacket();
       Serial.printf("Sending data: %s\n", msgBuffer);        }
+=======
+void motor_stop(){
+    ledcWrite(MOTOR_A_IN1, 0);
+    ledcWrite(MOTOR_A_IN2, 0);
+    ledcWrite(MOTOR_B_IN1, 0);
+    ledcWrite(MOTOR_B_IN2, 0);
+}
+
+bool segment_log_recv() {
+    char packetBuffer[255];
+    int packetSize = udp.parsePacket();
+    if (packetSize) {
+        int len = udp.read(packetBuffer, 255);
+        packetBuffer[len] = '\0';
+        //Serial.print("Received: ");
+        //Serial.println(packetBuffer);
+
+        if (strcmp(packetBuffer, "success") == 0) {
+            //Serial.println("connecting success:");
+            return true;
+        }
+        else if (strncmp(packetBuffer, "[junction_log]", 14) == 0) {
+            String receivedLog = String(packetBuffer).substring(14);
+            int commaIndex = 0;
+            int prevCommaIndex = -1;
+            for(int k=0; k<4; k++){
+                commaIndex = receivedLog.indexOf('|', prevCommaIndex + 1);
+                String segmentStr;
+                if(commaIndex == -1) {
+                    segmentStr = receivedLog.substring(prevCommaIndex + 1);
+                } else {
+                    segmentStr = receivedLog.substring(prevCommaIndex + 1, commaIndex);
+                }
+                others_junction_log[k] = segmentStr.toInt();
+                prevCommaIndex = commaIndex;
+                if(commaIndex == -1){
+                    udp.beginPacket(PC1_IP, sendPort);
+                    udp.write((const uint8_t*)"success", strlen("success"));
+                    udp.endPacket();
+                    return true;
+                }
+            }
+            /*
+            Serial.print("Updated others_junction_log: [");
+            for(int k=0; k<4; k++) {
+                Serial.print(others_junction_log[k]);
+                Serial.print(",");
+            }
+            Serial.println("]");
+            */
+            udp.beginPacket(PC1_IP, sendPort);
+            udp.write((const uint8_t*)"success", strlen("success"));
+            udp.endPacket();
+            return true;
+        }
+    }
+    return false;
+}
+
+void segment_log_send(String msg) {
+    char msgBuffer[128];
+    msg.toCharArray(msgBuffer, sizeof(msgBuffer));
+    udp.beginPacket(PC1_IP, sendPort);
+    udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
+    udp.endPacket();
+    //Serial.printf("Sending data: %s\n", msgBuffer);
+}
+
+//데이터 파싱, 컬러 데이터 전용
+void data_parsing(String msg) {
+    String result[6][5];  // 데이터를 저장할 2차원 String 배열
+    String initial = "color_data|";
+    int initial_len = initial.length();
+
+    if (msg.startsWith(initial)) {
+      msg = msg.substring(initial_len);  // "color_data|" 접두사 제거
+
+      int rowIndex = 0;
+      int colIndex = 0;
+      int startIndex = 0;
+      int endIndex = 0;
+
+      Serial.print("V: [");  // 디버깅을 위한 출력 시작
+
+      // 데이터를 파싱하고 inputValue에 저장하는 루프
+      while (rowIndex < 6 && (endIndex = msg.indexOf('|', startIndex)) != -1) {
+        String dataPoint = msg.substring(startIndex, endIndex);
+        result[rowIndex][colIndex] = dataPoint;  // 데이터 저장
+
+        Serial.print(result[rowIndex][colIndex]);  // 저장된 값 출력 (디버깅용)
+        Serial.print(", ");
+
+        colIndex++;
+        if (colIndex >= 5) {  // 현재 행이 꽉 차면 다음 행으로 이동
+          colIndex = 0;
+          rowIndex++;
+        }
+        startIndex = endIndex + 1;  // 다음 데이터 검색을 위해 인덱스 업데이트
+      }
+
+      // 마지막 데이터 포인트 처리 (뒤에 '|'가 없는 경우)
+      if (rowIndex < 6 && colIndex < 5 && startIndex < msg.length()) {
+        String lastDataPoint = msg.substring(startIndex);
+        result[rowIndex][colIndex] = lastDataPoint;
+        Serial.print(result[rowIndex][colIndex]);
+      }
+
+      Serial.print("]\n");  // 디버깅 출력 종료
+      Serial.println("\n--- Parsed inputValue Array ---");
+      for (int r = 0; r < 6; r++) {  // Iterate through rows
+        Serial.print("{");
+        for (int c = 0; c < 5; c++) {  // Iterate through columns
+          Serial.print("\"");
+          Serial.print(result[r][c]);
+          Serial.print("\"");
+          if (c < 4) {  // Don't print comma after the last element in a row
+            Serial.print(", ");
+          }
+        }
+        Serial.print("}");
+        if (r < 5) {  // Don't print comma after the last row
+          Serial.println(",");
+        }
+      }
+      Serial.println("\n-------------------------------\n");
+    } else {
+      Serial.print("M: ");
+      Serial.println(msg);
+    }
+}
+
+void control_by_segment(int segment = 10) {
+    if (conected_with_server == true){
+      if (segment == start_segment){
+          started_time = millis();
+          String message = "[playtime-start]" + String(playtime)
+                        + "|" + String(duration_time) + "|" + String(penalty_time) 
+                        + "|" + String(started_time)  + "|" + String(ended_time);
+          segment_log_send(message);
+      } else if (segment == end_segment){
+          ended_time = millis();
+          duration_time = ended_time - started_time;
+          playtime = duration_time + (penalty_count*penalty_time);
+          motor_stop();
+          String message = "[playtime-end]" + String(playtime)
+                        + "|" + String(duration_time) + "|" + String(penalty_count) 
+                        + "|" + String(started_time)  + "|" + String(ended_time);
+          segment_log_send(message);
+          //추가 데이터 전송
+      } else if (segment == log_exchange_segment){
+          log_exchange_mode = true;
+          motor_stop();
+          String message = "[junction_log]";
+          for(int i=0; i<4; i++){
+                message += String(my_junction_log[i]);
+                if(i < 3) message += "|";
+          }
+          while (log_exchange_mode == true){
+            segment_log_send(message);
+            if (segment_log_recv()){
+              log_exchange_mode = false;
+            }
+            delay(10);
+          }
+      } else if (segment != 0 && segment > last_segment){
+          if (segment %2 != 0 && my_junction_log_index < 4) { // 배열 범위 체크
+              my_junction_log[my_junction_log_index] = segment%10;
+              if (segment > log_exchange_segment && my_junction_log_index < 4){
+                  if (segment%10 == others_junction_log[my_junction_log_index]){
+                    penalty_count++;
+                  }
+              }
+              if (my_junction_log_index < 3){                
+                my_junction_log_index++;
+              }
+          }
+          String message = "[current_segment]" + String(segment);
+          segment_log_send(message);
+          last_segment = segment;
+        }
+    }
+>>>>>>> feature/junction
 }
 
 void setup() {
@@ -460,7 +664,14 @@ void loop() {
 
         }
     }
+<<<<<<< HEAD
     // if(aa==1){
     //   color_name();
     // }
+=======
+
+    int current_segment = 32; //테스트용값
+    conected_with_server = aa;
+    control_by_segment(current_segment);
+>>>>>>> feature/junction
 }
