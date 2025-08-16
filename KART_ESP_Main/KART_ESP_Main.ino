@@ -11,6 +11,7 @@ const char* password = "12345678";
 unsigned int recvPort = 7001;   //wifi연결 후 자동 설정
 unsigned int sendPort = 7000;
 IPAddress PC1_IP(192, 168, 0, 7);
+
 int aa = 0;
 int bb = 0;
 int cc = 0;
@@ -22,22 +23,32 @@ int cc = 0;
 #define MOTOR_B_IN2 33
 const int freq = 1000;
 const int resolution = 8;
-int MOTOR_A_state = 200;
+int MOTOR_A_state = 250;
 int MOTOR_B_state = 250;
-
+int MOTOR_A =250;
+int MOTOR_B =250;
 // AHRS 설정
-#define MAX_LINE_LENGTH 64
-HardwareSerial AHRS_Serial(2);
+// #define MAX_LINE_LENGTH 64
+// HardwareSerial AHRS_Serial(2);
 float Roll = 0, Pitch = 0, Yaw = 0.1, start_yaw = 0;
-char line[MAX_LINE_LENGTH];
-int lineIndex = 0;
+// char line[MAX_LINE_LENGTH];
+// int lineIndex = 0;
 
 // 컬러 센서 설정
 // #define MAX_COLORS 6  // 색상 수 고정
 // #define ATTR_COUNT 5  // color, lux, r, g, b
 // String tuning[MAX_COLORS][ATTR_COUNT];
 String tokens[200];          // 1차원 배열로 파싱된 결과
-String tuning[8][5];         // 최종 2차원 배열
+String tuning[8][5]={
+{"mdf","44","247","114","76"},
+{"red","65485","337","60","50"},
+{"blue","153","177","248","246"},
+{"green","196","184","203","88"},
+{"pink","36","694","275","235"},
+{"orange","65500","550","130","86"},
+{"sky","240","386","373","305"},
+{"white","218","615","409","311"}
+};         // 최종 2차원 배열
 int tokenCount = 0;
 int tuningSize = 8;
 #define I2C_SDA 13
@@ -57,51 +68,9 @@ String currentColorName = "unknown";
   // };
 Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_154MS, TCS34725_GAIN_1X);
 
-//구간 데이터
-int section_num = 1;
-
-#define row  13
-#define col  2
-String section[row][col] = {
-  {"red", "red"}, //1
-  {"wood", "wood"}, //2
-  {"blue", "green"}, //31,32
-  {"wood", "wood"}, //4
-  {"pink", "orange"},//51,52
-  {"wood", "wood"},//6
-  {"red", "red"},//7
-  {"wood", "wood"},//8
-  {"pink", "orange"},//91,92
-  {"wood", "wood"},//10
-  {"blue", "green"},//111,112
-  {"wood", "wood"},//12
-  {"red", "red"}//13
-};
-
 // 시간 저장
 unsigned long start_time = 0;
 unsigned long current_time = 0;
-
-
-bool conected_with_server = true;
-
-int start_segment = 20;
-int end_segment   = 130; //확인 필요
-int log_exchange_segment = 70; //확인 필요
-int last_segment = 0;
-
-bool log_exchange_mode = false;
-int my_junction_log[4] = {0,0,0,0};
-;int my_junction_log_index = 0;
-int others_junction_log[4] = {0,0,0,0};
-
-unsigned long started_time  = 0;
-unsigned long ended_time = 0;
-unsigned long duration_time = 0;
-unsigned long playtime = 0;
-unsigned int penalty_time  = 3000;
-unsigned int penalty_count = 0;
-
 
 // 색 판단 함수
 String color_define(uint16_t lux, uint16_t r, uint16_t g, uint16_t b,  int tuningSize) {
@@ -128,35 +97,15 @@ String color_define(uint16_t lux, uint16_t r, uint16_t g, uint16_t b,  int tunin
 
 // 데이터 전송 함수
 void data(
-    int sec_num,
     unsigned long start_time,
     int motorAState,
-    int motorBState,
-    float start_yaw
+    int motorBState
     ) {
     current_time = millis();
 
-    // 최신 AHRS 한 줄 수신
-    String latestLine = "";
-    unsigned long timeout = millis() + 100;
-    while (millis() < timeout) {
-        if (AHRS_Serial.available()) {
-            char c = AHRS_Serial.read();
-            if (c == '\n') break;
-            else latestLine += c;
-        }
-    }
 
     // Yaw 추출
-    float parsedYaw = Yaw;
-    int firstComma = latestLine.indexOf(',');
-    int secondComma = latestLine.indexOf(',', firstComma + 1);
-    if (firstComma != -1 && secondComma != -1) {
-        String yawStr = latestLine.substring(secondComma + 1);
-        parsedYaw = yawStr.toFloat();
-    }
-    Yaw = parsedYaw;
-    float yaw_diff = start_yaw - Yaw;
+    float yaw_diff = 1;
 
     // 컬러 측정
     tcs.getRawData(&currentR, &currentG, &currentB, &currentC);
@@ -164,7 +113,7 @@ void data(
     currentColorName = color_define(currentLux, currentR, currentG, currentB, tuningSize);
 
     // 전송
-    String msg = "[record]" + String(sec_num) +"|" + String(start_time) + "|" + String(current_time) + "|" +
+    String msg = "[record]0|" + String(start_time) + "|" + String(current_time) + "|" +
                  String(motorAState) + "|" + String(motorBState) + "|" + String(yaw_diff, 2) + "|" +
                  currentColorName + "|" + String(currentLux) + "|" +
                  String(currentR) + "|" + String(currentG) + "|" + String(currentB) + "|" +
@@ -180,7 +129,6 @@ void data(
     Serial.printf("Sending data: %s\n", msgBuffer);
 }
 
-<<<<<<< HEAD
 void send_raw_color(String name){
   String Tuning[6][5];
   int lux_avg = 0, r_avg = 0, g_avg = 0, b_avg = 0;
@@ -326,232 +274,14 @@ void color_name(){
       udp.beginPacket(PC1_IP, sendPort);
       udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
       udp.endPacket();
-      Serial.printf("Sending data: %s\n", msgBuffer);        
-}
-
-void motor_stop(){
-    ledcWrite(MOTOR_A_IN1, 0);
-    ledcWrite(MOTOR_A_IN2, 0);
-    ledcWrite(MOTOR_B_IN1, 0);
-    ledcWrite(MOTOR_B_IN2, 0);
-}
-
-bool segment_log_recv() {
-    char packetBuffer[255];
-    int packetSize = udp.parsePacket();
-    if (packetSize) {
-        int len = udp.read(packetBuffer, 255);
-        packetBuffer[len] = '\0';
-        //Serial.print("Received: ");
-        //Serial.println(packetBuffer);
-
-        if (strcmp(packetBuffer, "success") == 0) {
-            //Serial.println("connecting success:");
-            return true;
-        }
-        else if (strncmp(packetBuffer, "[junction_log]", 14) == 0) {
-            String receivedLog = String(packetBuffer).substring(14);
-            int commaIndex = 0;
-            int prevCommaIndex = -1;
-            for(int k=0; k<4; k++){
-                commaIndex = receivedLog.indexOf('|', prevCommaIndex + 1);
-                String segmentStr;
-                if(commaIndex == -1) {
-                    segmentStr = receivedLog.substring(prevCommaIndex + 1);
-                } else {
-                    segmentStr = receivedLog.substring(prevCommaIndex + 1, commaIndex);
-                }
-                others_junction_log[k] = segmentStr.toInt();
-                prevCommaIndex = commaIndex;
-                if(commaIndex == -1){
-                    udp.beginPacket(PC1_IP, sendPort);
-                    udp.write((const uint8_t*)"success", strlen("success"));
-                    udp.endPacket();
-                    return true;
-                }
-            }
-            /*
-            Serial.print("Updated others_junction_log: [");
-            for(int k=0; k<4; k++) {
-                Serial.print(others_junction_log[k]);
-                Serial.print(",");
-            }
-            Serial.println("]");
-            */
-            udp.beginPacket(PC1_IP, sendPort);
-            udp.write((const uint8_t*)"success", strlen("success"));
-            udp.endPacket();
-            return true;
-        }
-    }
-    return false;
-}
-
-void segment_log_send(String msg) {
-    char msgBuffer[128];
-    msg.toCharArray(msgBuffer, sizeof(msgBuffer));
-    udp.beginPacket(PC1_IP, sendPort);
-    udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
-    udp.endPacket();
-    //Serial.printf("Sending data: %s\n", msgBuffer);
-}
-
-//데이터 파싱, 컬러 데이터 전용
-void data_parsing(String msg) {
-    String result[6][5];  // 데이터를 저장할 2차원 String 배열
-    String initial = "color_data|";
-    int initial_len = initial.length();
-
-    if (msg.startsWith(initial)) {
-      msg = msg.substring(initial_len);  // "color_data|" 접두사 제거
-
-      int rowIndex = 0;
-      int colIndex = 0;
-      int startIndex = 0;
-      int endIndex = 0;
-
-      Serial.print("V: [");  // 디버깅을 위한 출력 시작
-
-      // 데이터를 파싱하고 inputValue에 저장하는 루프
-      while (rowIndex < 6 && (endIndex = msg.indexOf('|', startIndex)) != -1) {
-        String dataPoint = msg.substring(startIndex, endIndex);
-        result[rowIndex][colIndex] = dataPoint;  // 데이터 저장
-
-        Serial.print(result[rowIndex][colIndex]);  // 저장된 값 출력 (디버깅용)
-        Serial.print(", ");
-
-        colIndex++;
-        if (colIndex >= 5) {  // 현재 행이 꽉 차면 다음 행으로 이동
-          colIndex = 0;
-          rowIndex++;
-        }
-        startIndex = endIndex + 1;  // 다음 데이터 검색을 위해 인덱스 업데이트
-      }
-
-      // 마지막 데이터 포인트 처리 (뒤에 '|'가 없는 경우)
-      if (rowIndex < 6 && colIndex < 5 && startIndex < msg.length()) {
-        String lastDataPoint = msg.substring(startIndex);
-        result[rowIndex][colIndex] = lastDataPoint;
-        Serial.print(result[rowIndex][colIndex]);
-      }
-
-      Serial.print("]\n");  // 디버깅 출력 종료
-      Serial.println("\n--- Parsed inputValue Array ---");
-      for (int r = 0; r < 6; r++) {  // Iterate through rows
-        Serial.print("{");
-        for (int c = 0; c < 5; c++) {  // Iterate through columns
-          Serial.print("\"");
-          Serial.print(result[r][c]);
-          Serial.print("\"");
-          if (c < 4) {  // Don't print comma after the last element in a row
-            Serial.print(", ");
-          }
-        }
-        Serial.print("}");
-        if (r < 5) {  // Don't print comma after the last row
-          Serial.println(",");
-        }
-      }
-      Serial.println("\n-------------------------------\n");
-    } else {
-      Serial.print("M: ");
-      Serial.println(msg);
-    }
-}
-
-void control_by_segment(int segment = 10) {
-    if (conected_with_server == true){
-      if (segment == start_segment){
-          started_time = millis();
-          String message = "[playtime-start]" + String(playtime)
-                        + "|" + String(duration_time) + "|" + String(penalty_time) 
-                        + "|" + String(started_time)  + "|" + String(ended_time);
-          segment_log_send(message);
-      } else if (segment == end_segment){
-          ended_time = millis();
-          duration_time = ended_time - started_time;
-          playtime = duration_time + (penalty_count*penalty_time);
-          motor_stop();
-          String message = "[playtime-end]" + String(playtime)
-                        + "|" + String(duration_time) + "|" + String(penalty_count) 
-                        + "|" + String(started_time)  + "|" + String(ended_time);
-          segment_log_send(message);
-          //추가 데이터 전송
-      } else if (segment == log_exchange_segment){
-          log_exchange_mode = true;
-          motor_stop();
-          String message = "[junction_log]";
-          for(int i=0; i<4; i++){
-                message += String(my_junction_log[i]);
-                if(i < 3) message += "|";
-          }
-          while (log_exchange_mode == true){
-            segment_log_send(message);
-            if (segment_log_recv()){
-              log_exchange_mode = false;
-            }
-            delay(10);
-          }
-      } else if (segment != 0 && segment > last_segment){
-          if (segment %2 != 0 && my_junction_log_index < 4) { // 배열 범위 체크
-              my_junction_log[my_junction_log_index] = segment%10;
-              if (segment > log_exchange_segment && my_junction_log_index < 4){
-                  if (segment%10 == others_junction_log[my_junction_log_index]){
-                    penalty_count++;
-                  }
-              }
-              if (my_junction_log_index < 3){                
-                my_junction_log_index++;
-              }
-          }
-          String message = "[current_segment]" + String(segment);
-          segment_log_send(message);
-          last_segment = segment;
-        }
-    }
-=======
-// 구간 판별 함수
-int classify(int sec_num){
-    if (sec_num>20){
-      sec_num /=10;
-    }
-
-    tcs.getRawData(&currentR, &currentG, &currentB, &currentC);
-    uint16_t currentLux = tcs.calculateLux(currentR, currentG, currentB);
-    String ColorName = color_define(currentLux, currentR, currentG, currentB, tuning, tuningSize);
-
-    if (section[sec_num-1][0] != ColorName  || section[sec_num-1][1] != ColorName){
-      if (section[sec_num][0] == ColorName  || section[sec_num][1] == ColorName){
-        currentColorName = ColorName;
-        if (sec_num%2 == 0){
-          if(section[sec_num][0] == section[sec_num][1]){
-            sec_num++;
-          }
-          else if (ColorName == section[sec_num][0]){
-            sec_num = (sec_num+1)*10 + 1;
-          }
-          else{
-            sec_num = (sec_num+1)*10 + 2;
-          }
-        }
-        else{
-          sec_num++;
-        }
-      }
-      else{
-        Serial.println("sameColor: " + ColorName);
-      }
-    }
-    if (section_num/10 == sec_num ){
-      return section_num;
-    }
-    return sec_num;
->>>>>>> recording
+      Serial.printf("Sending data: %s\n", msgBuffer);        }
 }
 
 void setup() {
+
+
     Serial.begin(9600);
-    AHRS_Serial.begin(115200, SERIAL_8N1, 34, -1);
+    // AHRS_Serial.begin(115200, SERIAL_8N1, 34, -1);
     WiFi.begin(ssid, password);
 
     Serial.println("Connecting to WiFi...start");
@@ -564,14 +294,19 @@ void setup() {
     Serial.println("<esp32_ip>");
     Serial.println(WiFi.localIP());
 
-    if(WiFi.localIP()=="192.168.0.2"){
+    if(WiFi.localIP()=="192.168.0.14"){
         sendPort = 4213;
         recvPort = 4212;
+        MOTOR_A = 250;
+        MOTOR_B = 250;
     }
 
-    else if(WiFi.localIP()=="192.168.0.12"){
+    else if(WiFi.localIP()=="192.168.0.18"){
         sendPort = 7000;
         recvPort = 7001;
+        MOTOR_A = 250;
+        MOTOR_B = 250;
+
     }
     Serial.print("recvport: ");
     Serial.println(recvPort);
@@ -599,13 +334,10 @@ void setup() {
 }
 
 void loop() {
-
+  
     char packetBuffer[255];
     int packetSize = udp.parsePacket();
     //data(start_time, MOTOR_A_state, MOTOR_B_state, start_yaw);
-
-    section_num = classify(section_num);
-
     if (packetSize) {
         // color_name();
 
@@ -614,25 +346,21 @@ void loop() {
         Serial.print("Received: ");
         Serial.println(packetBuffer);
 
-        if (aa == 0 && strcmp(packetBuffer, "success") == 0) {
-            aa = 1;
-            start_yaw = Yaw;
-            start_time = millis();
-            Serial.println("connecting success:");
-        } else if (aa == 0) {
-            data(start_time, MOTOR_A_state, MOTOR_B_state, start_yaw);
-            udp.beginPacket(PC1_IP, sendPort);
-            udp.write((const uint8_t*)packetBuffer, strlen(packetBuffer));
-            udp.endPacket();
-        }
+//         if (aa == 0 && strcmp(packetBuffer, "success") == 0) {
+//             aa = 1;
+//             start_yaw = Yaw;
+//             start_time = millis();
+//             Serial.println("connecting success:");
+//         } else if (aa == 0) {
+// //            data(start_time, MOTOR_A_state, MOTOR_B_state);
+//             udp.beginPacket(PC1_IP, sendPort);
+//             udp.write((const uint8_t*)packetBuffer, strlen(packetBuffer));
+//             udp.endPacket();
+//         }
 
-        if (aa == 1) {
-<<<<<<< HEAD
-            MOTOR_A_state = 200;
-=======
-            MOTOR_A_state = 250;
->>>>>>> recording
-            MOTOR_B_state = 250;
+        if (aa == 0) {
+            MOTOR_A_state = MOTOR_A;
+            MOTOR_B_state = MOTOR_B;
             if (strcmp(packetBuffer, "w") == 0) {
                 ledcWrite(MOTOR_A_IN1, MOTOR_A_state);
                 ledcWrite(MOTOR_A_IN2, 0);
@@ -640,31 +368,20 @@ void loop() {
                 ledcWrite(MOTOR_B_IN2, 0);
                 // data(start_time, MOTOR_A_state, MOTOR_B_state, start_yaw);
             } else if (strcmp(packetBuffer, "a") == 0) {
-<<<<<<< HEAD
-                MOTOR_B_state = 150;
-=======
-                MOTOR_A_state = 0;
-                MOTOR_B_state = 130;
->>>>>>> recording
+                MOTOR_B_state = 200  ;
                 ledcWrite(MOTOR_A_IN1, 0);
                 ledcWrite(MOTOR_A_IN2, 0);
                 ledcWrite(MOTOR_B_IN1, MOTOR_B_state);
                 ledcWrite(MOTOR_B_IN2, 0);
                 // data(start_time, MOTOR_A_state, MOTOR_B_state, start_yaw);
             } else if (strcmp(packetBuffer, "d") == 0) {
-                MOTOR_A_state = 160;
-<<<<<<< HEAD
-=======
-                MOTOR_B_state = 0;
-
->>>>>>> recording
+                MOTOR_A_state = 200;
                 ledcWrite(MOTOR_A_IN1, MOTOR_A_state);
                 ledcWrite(MOTOR_A_IN2, 0);
                 ledcWrite(MOTOR_B_IN1, 0);
                 ledcWrite(MOTOR_B_IN2, 0);
                 // data(start_time, MOTOR_A_state, MOTOR_B_state, start_yaw);
             } else if (strcmp(packetBuffer, "s") == 0) {
-
                 ledcWrite(MOTOR_A_IN1, 0);
                 ledcWrite(MOTOR_A_IN2, MOTOR_A_state);
                 ledcWrite(MOTOR_B_IN1, 0);
@@ -714,6 +431,7 @@ void loop() {
                 ledcWrite(MOTOR_A_IN2, 0);
                 ledcWrite(MOTOR_B_IN1, 0);
                 ledcWrite(MOTOR_B_IN2, 0);     
+                delay(10000000);
             }
             else if(strcmp(packetBuffer, "[name]") == 0) {
                           tcs.getRawData(&currentR, &currentG, &currentB, &currentC);
@@ -743,7 +461,7 @@ void loop() {
 
         }
     }
-    //int current_segment = 32; //테스트용값
-    //conected_with_server = aa;
-    //control_by_segment(current_segment);
+    // if(aa==1){
+    //   color_name();
+    // }
 }
