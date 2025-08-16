@@ -57,6 +57,27 @@ String currentColorName = "unknown";
   // };
 Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_154MS, TCS34725_GAIN_1X);
 
+//구간 데이터
+int section_num = 1;
+
+#define row  13
+#define col  2
+String section[row][col] = {
+  {"red", "red"}, //1
+  {"wood", "wood"}, //2
+  {"blue", "green"}, //31,32
+  {"wood", "wood"}, //4
+  {"pink", "orange"},//51,52
+  {"wood", "wood"},//6
+  {"red", "red"},//7
+  {"wood", "wood"},//8
+  {"pink", "orange"},//91,92
+  {"wood", "wood"},//10
+  {"blue", "green"},//111,112
+  {"wood", "wood"},//12
+  {"red", "red"}//13
+};
+
 // 시간 저장
 unsigned long start_time = 0;
 unsigned long current_time = 0;
@@ -107,6 +128,7 @@ String color_define(uint16_t lux, uint16_t r, uint16_t g, uint16_t b,  int tunin
 
 // 데이터 전송 함수
 void data(
+    int sec_num,
     unsigned long start_time,
     int motorAState,
     int motorBState,
@@ -142,7 +164,7 @@ void data(
     currentColorName = color_define(currentLux, currentR, currentG, currentB, tuningSize);
 
     // 전송
-    String msg = "[record]0|" + String(start_time) + "|" + String(current_time) + "|" +
+    String msg = "[record]" + String(sec_num) +"|" + String(start_time) + "|" + String(current_time) + "|" +
                  String(motorAState) + "|" + String(motorBState) + "|" + String(yaw_diff, 2) + "|" +
                  currentColorName + "|" + String(currentLux) + "|" +
                  String(currentR) + "|" + String(currentG) + "|" + String(currentB) + "|" +
@@ -158,6 +180,7 @@ void data(
     Serial.printf("Sending data: %s\n", msgBuffer);
 }
 
+<<<<<<< HEAD
 void send_raw_color(String name){
   String Tuning[6][5];
   int lux_avg = 0, r_avg = 0, g_avg = 0, b_avg = 0;
@@ -486,6 +509,44 @@ void control_by_segment(int segment = 10) {
           last_segment = segment;
         }
     }
+=======
+// 구간 판별 함수
+int classify(int sec_num){
+    if (sec_num>20){
+      sec_num /=10;
+    }
+
+    tcs.getRawData(&currentR, &currentG, &currentB, &currentC);
+    uint16_t currentLux = tcs.calculateLux(currentR, currentG, currentB);
+    String ColorName = color_define(currentLux, currentR, currentG, currentB, tuning, tuningSize);
+
+    if (section[sec_num-1][0] != ColorName  || section[sec_num-1][1] != ColorName){
+      if (section[sec_num][0] == ColorName  || section[sec_num][1] == ColorName){
+        currentColorName = ColorName;
+        if (sec_num%2 == 0){
+          if(section[sec_num][0] == section[sec_num][1]){
+            sec_num++;
+          }
+          else if (ColorName == section[sec_num][0]){
+            sec_num = (sec_num+1)*10 + 1;
+          }
+          else{
+            sec_num = (sec_num+1)*10 + 2;
+          }
+        }
+        else{
+          sec_num++;
+        }
+      }
+      else{
+        Serial.println("sameColor: " + ColorName);
+      }
+    }
+    if (section_num/10 == sec_num ){
+      return section_num;
+    }
+    return sec_num;
+>>>>>>> recording
 }
 
 void setup() {
@@ -538,9 +599,13 @@ void setup() {
 }
 
 void loop() {
+
     char packetBuffer[255];
     int packetSize = udp.parsePacket();
     //data(start_time, MOTOR_A_state, MOTOR_B_state, start_yaw);
+
+    section_num = classify(section_num);
+
     if (packetSize) {
         // color_name();
 
@@ -562,7 +627,11 @@ void loop() {
         }
 
         if (aa == 1) {
+<<<<<<< HEAD
             MOTOR_A_state = 200;
+=======
+            MOTOR_A_state = 250;
+>>>>>>> recording
             MOTOR_B_state = 250;
             if (strcmp(packetBuffer, "w") == 0) {
                 ledcWrite(MOTOR_A_IN1, MOTOR_A_state);
@@ -571,7 +640,12 @@ void loop() {
                 ledcWrite(MOTOR_B_IN2, 0);
                 // data(start_time, MOTOR_A_state, MOTOR_B_state, start_yaw);
             } else if (strcmp(packetBuffer, "a") == 0) {
+<<<<<<< HEAD
                 MOTOR_B_state = 150;
+=======
+                MOTOR_A_state = 0;
+                MOTOR_B_state = 130;
+>>>>>>> recording
                 ledcWrite(MOTOR_A_IN1, 0);
                 ledcWrite(MOTOR_A_IN2, 0);
                 ledcWrite(MOTOR_B_IN1, MOTOR_B_state);
@@ -579,12 +653,18 @@ void loop() {
                 // data(start_time, MOTOR_A_state, MOTOR_B_state, start_yaw);
             } else if (strcmp(packetBuffer, "d") == 0) {
                 MOTOR_A_state = 160;
+<<<<<<< HEAD
+=======
+                MOTOR_B_state = 0;
+
+>>>>>>> recording
                 ledcWrite(MOTOR_A_IN1, MOTOR_A_state);
                 ledcWrite(MOTOR_A_IN2, 0);
                 ledcWrite(MOTOR_B_IN1, 0);
                 ledcWrite(MOTOR_B_IN2, 0);
                 // data(start_time, MOTOR_A_state, MOTOR_B_state, start_yaw);
             } else if (strcmp(packetBuffer, "s") == 0) {
+
                 ledcWrite(MOTOR_A_IN1, 0);
                 ledcWrite(MOTOR_A_IN2, MOTOR_A_state);
                 ledcWrite(MOTOR_B_IN1, 0);
