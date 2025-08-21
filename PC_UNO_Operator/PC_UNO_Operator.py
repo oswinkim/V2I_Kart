@@ -22,8 +22,8 @@ class Common:
 
         Common.num += 1
 
-        self.Priority = Common.num
-        # print(f"우선순위: {self.Priority}")
+        self.priority = Common.num
+        # print(f"우선순위: {self.priority}")
 
         if not ip:
             ip = input("ip가 설정되지 않았습니다.ex) 0.0.0.0: ")
@@ -33,18 +33,18 @@ class Common:
         if not sendPort:
             sendPort = input("송신포트가 설정되지 않았습니다.ex) 5000: ")
         self.sendPort = int(sendPort)
-        # print(f"송신포트: {self.send_Port}")
+        # print(f"송신포트: {self.sendPort}")
 
         if not revPort:
             revPort = input("수신포트가 설정되지 않았습니다.ex) 5001: ")
         self.revPort = int(revPort)
-        # print(f"수신포트: {self.rev_Port}\n")
+        # print(f"수신포트: {self.revPort}\n")
 
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind(("", self.sendPort))
 
-        WorldSockets.append(self.socket)
+        worldSockets.append(self.socket)
 
 
 class Player(Common):
@@ -55,8 +55,8 @@ class Player(Common):
 
         if not name:
             name = input("플레이어의 이름이 설정되지 않았습니다.ex) 다오: ")
-        self.name=name
-        # print(f"플레이어 이름: {self.Name}")
+        self.name = name
+        # print(f"플레이어 이름: {self.name}")
 
         super().__init__(ip, sendPort, revPort)
 
@@ -69,7 +69,7 @@ class Kart(Common):
         if not name:
             name = input("카트의 이름이 설정되지 않았습니다.ex) 코튼: ")
         self.name = name
-        # print(f"카트 이름: {self.Name}")
+        # print(f"카트 이름: {self.name}")
         
         self.ahrsStart = 0
         self.ahrs = 0
@@ -91,7 +91,7 @@ class Infra(Common):
         if not name:
             name = input("인프라의 이름이 설정되지 않았습니다.ex) 신호등1: ")
         self.name = name
-        # print(f"인프라 이름: {self.Name}")
+        # print(f"인프라 이름: {self.name}")
 
         super().__init__(ip, sendPort, revPort)
 
@@ -105,7 +105,7 @@ class User:
         # print("[User 설정시작]")
         self.type = "User"
         self.key = "space"
-        # print(f"객체 타입: {self.Type}")
+        # print(f"객체 타입: {self.type}")
 
         if not userName:
             userName = input("유저 이름이 설정되지 않았습니다.ex) 세이버, 다오")
@@ -150,14 +150,14 @@ class User:
 def send(target, msg):
     target.socket.sendto(msg.encode(), (target.ip, target.revPort))
     if "[name]" not in msg:
-        print(f"{target.Name}에게 {msg}를 보냈습니다.")
+        print(f"{target.name}에게 {msg}를 보냈습니다.")
 
 def sends(t:list, msg):
     for target in t:
         target.socket.sendto(msg.encode(), (target.ip, target.revPort))
-        print(f"{target.Name}에게 {msg}를 보냈습니다.")
+        print(f"{target.name}에게 {msg}를 보냈습니다.")
 
-def get_Unique_Filename(directory, baseName, extension=".csv"):
+def getUniqueFilename(directory, baseName, extension=".csv"):
     # 디렉토리 존재 여부 확인 및 생성
     os.makedirs(directory, existOk=True)
 
@@ -172,12 +172,12 @@ def get_Unique_Filename(directory, baseName, extension=".csv"):
 
     return fullPath
 
-def csvFileSave(MACRON:list):
-    for i in range(len(MACRON)):
-        if (MACRON[i].Type == "User"):
+def csvFileSave(macron:list):
+    for i in range(len(macron)):
+        if (macron[i].type == "User"):
             qual = 0
             while 1:
-                qual = input(f"{MACRON[i].userName}의 데이터 수집 결과 결정 (GOOD:2, NOMAL:1, BAD:0)\n입력: ")
+                qual = input(f"{macron[i].userName}의 데이터 수집 결과 결정 (GOOD:2, NOMAL:1, BAD:0)\n입력: ")
                 try:
                     qual = int(qual)
                     if 0 <= qual <= 2:
@@ -197,42 +197,42 @@ def csvFileSave(MACRON:list):
                 qual = "[good]"
             
             filePath = "c:\\Users\\PC-16\\Desktop\\V2I_Kart\\PC_UNO_Operator\\data\\" 
-            baseName = qual + MACRON[i].userName 
-            fileName = get_Unique_Filename(filePath,baseName)
+            baseName = qual + macron[i].userName 
+            fileName = getUniqueFilename(filePath,baseName)
 
 
             with open(fileName, 'w', newLine = '', encoding = 'utf-8') as f:
                 writer = csv.writer(f)
-                # writer.writerow([f'userName = {MACRON[i].userName}', 
-                #                  f'nameKart = {MACRON[i].Kart.name}', 
-                #                  f'ipKart = {MACRON[i].Kart.ip}', 
-                #                  f'sendPortKart = {MACRON[i].Kart.sendPort}', 
-                #                  f'revPortKart = {MACRON[i].Kart.revPort}', 
-                #                  f'namePlayer = {MACRON[i].Player.name}', 
-                #                  f'ipPlayer = {MACRON[i].Player.ip}', 
-                #                  f'sendPortPlayer = {MACRON[i].Player.sendPort}', 
-                #                  f'revPortPlayer = {MACRON[i].Player.revPort}', 
+                # writer.writerow([f'userName = {macron[i].userName}', 
+                #                  f'nameKart = {macron[i].Kart.name}', 
+                #                  f'ipKart = {macron[i].Kart.ip}', 
+                #                  f'sendPortKart = {macron[i].Kart.sendPort}', 
+                #                  f'revPortKart = {macron[i].Kart.revPort}', 
+                #                  f'namePlayer = {macron[i].Player.name}', 
+                #                  f'ipPlayer = {macron[i].Player.ip}', 
+                #                  f'sendPortPlayer = {macron[i].Player.sendPort}', 
+                #                  f'revPortPlayer = {macron[i].Player.revPort}', 
                 #                  ])
                 # writer.writerow([]) 
-                for row in MACRON[i].drivingRecord:
+                for row in macron[i].drivingRecord:
                     writer.writerow(row)  # 각 행 쓰기
                 print(f"저장된 데이터 파일명: {fileName}")
 
-def connecting(M:list):
+def connecting(m:list):
     # 난수 발생
     num = str(r.randrange(10,100))
     
-    for i in range(len(M)):
-        if (M[i].type == "User"):
-            print(f"[{M[i].userName}과 연결 시작]")
+    for i in range(len(m)):
+        if (m[i].type == "User"):
+            print(f"[{m[i].userName}과 연결 시작]")
 
             # 플레이어 연결
-            print(f"\n플레이어[{M[i].Player.Name}]와 연결중...")
+            print(f"\n플레이어[{m[i].Player.name}]와 연결중...")
             while 1:
                 # 난수 전송
-                send(M[i].Player, num)
+                send(m[i].Player, num)
 
-                readable, _, _ = select.select(WorldSockets, [], [], 1)
+                readable, _, _ = select.select(worldSockets, [], [], 1)
 
                 if not readable:
                     print("재전송")
@@ -241,22 +241,22 @@ def connecting(M:list):
                         data, addr = sock.recvfrom(1024)  # 데이터 수신
                         msg = data.decode().strip()
 
-                    if sock == M[i].Player.socket:
+                    if sock == m[i].Player.socket:
                         if num in msg:
                             print("연결성공!")
-                            send(M[i].Player, "success")
+                            send(m[i].Player, "success")
                             break
                         else:
                             print("ERROR:요청하지 않은 메시지")
                             print(f"msg:{msg}")
 
             # 카트 연결
-            print(f"\n카트[{M[i].Kart.Name}]와 연결중...")
+            print(f"\n카트[{m[i].Kart.name}]와 연결중...")
             while 1:
                 # 난수 전송
-                send(M[i].Kart, num)
+                send(m[i].Kart, num)
 
-                readable, _, _ = select.select(WorldSockets, [], [], 1)
+                readable, _, _ = select.select(worldSockets, [], [], 1)
 
                 if not readable:
                     print("재전송")
@@ -267,19 +267,19 @@ def connecting(M:list):
                         msg = data.decode().strip()
 
                     
-                    if sock == M[i].Kart.socket:
+                    if sock == m[i].Kart.socket:
                         if num in msg:
                             print("연결성공!")
-                            send(M[i].Kart, "success")
+                            send(m[i].Kart, "success")
                             break
                         else:
                             print("ERROR:요청하지 않은 메시지")
                             print(f"msg:{msg}")
 
             # #AHRS 정상 작동 확인
-            # print(f"\n카트[{M[i].Kart.Name}]의 AHRS센서 정상 작동 확인중...")
+            # print(f"\n카트[{m[i].Kart.name}]의 AHRS센서 정상 작동 확인중...")
             # while 1:
-            #     send(M[i].Kart, "ahrs")
+            #     send(m[i].Kart, "ahrs")
 
             #     readable, _, _ = select.select(WorldSockets, [], [], 1)
                 
@@ -290,7 +290,7 @@ def connecting(M:list):
             #             data, addr = sock.recvfrom(1024)  # 데이터 수신
             #             msg = data.decode().strip()
 
-            #         if sock == M[i].Kart.socket:
+            #         if sock == m[i].Kart.socket:
             #             if "[ahrs]" in msg:
             #                 msg = msg[6:]
             #                 try:
@@ -313,9 +313,9 @@ def connecting(M:list):
             #                 print(f"msg:{msg}")
 
             # #color센서 정상 작동 확인
-            # print(f"\n카트[{M[i].Kart.Name}]의 Color센서 정상 작동 확인중...")
+            # print(f"\n카트[{m[i].Kart.name}]의 Color센서 정상 작동 확인중...")
             # while 1:
-            #     send(M[i].Kart, "Color")
+            #     send(m[i].Kart, "color")
                 
             #     readable, _, _ = select.select(WorldSockets, [], [], 1)
             #     if not readable:
@@ -326,7 +326,7 @@ def connecting(M:list):
             #             msg = data.decode().strip()
 
             #         if sock == M[i].Kart.socket:
-            #             if "[Color]" in msg:
+            #             if "[color]" in msg:
             #                 msg = msg[7:]
 
             #                 lux, msgR, msgG, msgB = msg.split(',')
@@ -344,7 +344,7 @@ def connecting(M:list):
             #                 print("ERROR:요청하지 않은 메시지")
             #                 print(f"msg:{msg}")
 
-            print(f"[{M[i].userName}과 연결 완료]\n")
+            print(f"[{m[i].userName}과 연결 완료]\n")
 
 
 def Player2Kart(U, msg):
@@ -364,13 +364,13 @@ def Player2Kart(U, msg):
         #     U.key = msg
         # else:    
             U.Kart.socket.sendto(msg.encode(), (U.Kart.ip, U.Kart.revPort)) # move
-            print(f"Sent to [{U.Kart.Name}]ESP: {msg}")
+            print(f"Sent to [{U.Kart.name}]ESP: {msg}")
             U.key = msg
         
 
     elif msg == "space":
         U.Kart.socket.sendto("i".encode(), (U.Kart.ip, U.Kart.revPort))  # motor OFF
-        print(f"Sent to [{U.Kart.Name}]ESP: motor OFF")
+        print(f"Sent to [{U.Kart.name}]ESP: motor OFF")
 
     elif "enter" in msg:
         if U.role == "cat":
@@ -423,7 +423,7 @@ def colorDefine(lux, r, g, b, tuning:list, U):
     deviation = []
 
     try:
-        if U.Type == "User":
+        if U.type == "User":
             Dao.Kart.colorR = int(r)
             Dao.Kart.colorG = int(g)
             Dao.Kart.colorB = int(b)
@@ -492,7 +492,7 @@ def colorAdjust(U):
     print("esp32를 컬러보정 상태로 변경중...")
     while 1:
         send(U.Kart, "[colorAdjust]")
-        readable, _, _ = select.select(WorldSockets, [], [], 1)
+        readable, _, _ = select.select(worldSockets, [], [], 1)
 
         if not readable:
             print("재전송")
@@ -515,7 +515,7 @@ def colorAdjust(U):
         while 1:
             
             send(U.Kart, "color=" + colorAll[p])
-            readable, _, _ = select.select(WorldSockets, [], [], 1)
+            readable, _, _ = select.select(worldSockets, [], [], 1)
 
             if not readable:
                 print(f"{colorAll[p]}색상값 재요청, p:{p}")
@@ -565,7 +565,7 @@ def colorAdjust(U):
     while 1:
         send(U.Kart, sendMsg)
 
-        readable, _, _ = select.select(WorldSockets, [], [], 1)
+        readable, _, _ = select.select(worldSockets, [], [], 1)
 
         if not readable:
             print("재전송")
@@ -631,7 +631,7 @@ def game_play():
             return
 # 실행 시 변경해야 할 부분
 
-WorldSockets = []
+worldSockets = []
 keysMove = ["w","a","s","d"]
 
 gameState = 1
@@ -736,13 +736,13 @@ while True:
 
         # now = time.time()
         # for obj in userList:
-        #     name = obj.Kart.Name
+        #     name = obj.Kart.name
         #     if name not in colorTime or now - colorTime[name]>1:
         #         send(obj.Kart, "[name]")
         #         colorTime[name] = now
 
         # select를 사용하여 먼저 오는 데이터 처리
-        readable, _, _ = select.select(WorldSockets, [], [])
+        readable, _, _ = select.select(worldSockets, [], [])
 
         for sock in readable:
             data, addr = sock.recvfrom(1024)  # 데이터 수신
@@ -779,7 +779,7 @@ while True:
         print("Exiting...")
         # csv파일 저장
         csvFileSave(macron)
-        for sock in WorldSockets:
+        for sock in worldSockets:
             sock.close()
             print(sock)
         break
@@ -787,6 +787,6 @@ while True:
 print("Exiting...")
 # csv파일 저장
 csvFileSave(macron)
-for sock in WorldSockets:
+for sock in worldSockets:
     sock.close()
     print(sock)
