@@ -48,27 +48,27 @@ class Common:
 
 
 class Player(Common):
-    def __init__(self, Name = "", ip = "", sendPort = "", revPort = ""):
+    def __init__(self, name = "", ip = "", sendPort = "", revPort = ""):
         # print("[Player 설정시작]")
-        self.Type = "Player"
-        # print(f"객체 타입: {self.Type}")
+        self.type = "Player"
+        # print(f"객체 타입: {self.type}")
 
-        if not Name:
-            Name = input("플레이어의 이름이 설정되지 않았습니다.ex) 다오: ")
-        self.Name=Name
+        if not name:
+            name = input("플레이어의 이름이 설정되지 않았습니다.ex) 다오: ")
+        self.name=name
         # print(f"플레이어 이름: {self.Name}")
 
         super().__init__(ip, sendPort, revPort)
 
 class Kart(Common):
-    def __init__(self, Name = "", ip = "", sendPort = "", revPort = ""):
+    def __init__(self, name = "", ip = "", sendPort = "", revPort = ""):
         # print("[Kart 설정시작]")
-        self.Type = "Kart"
-        # print(f"객체 타입: {self.Type}")
+        self.type = "Kart"
+        # print(f"객체 타입: {self.type}")
 
-        if not Name:
-            Name = input("카트의 이름이 설정되지 않았습니다.ex) 코튼: ")
-        self.Name = Name
+        if not name:
+            name = input("카트의 이름이 설정되지 않았습니다.ex) 코튼: ")
+        self.name = name
         # print(f"카트 이름: {self.Name}")
         
         self.ahrsStart = 0
@@ -83,14 +83,14 @@ class Kart(Common):
         super().__init__(ip, sendPort, revPort)
 
 class Infra(Common):
-    def __init__(self, Name="", ip="", sendPort="", revPort=""):
+    def __init__(self, name="", ip="", sendPort="", revPort=""):
         # print("[Infra 작성시작]")
-        self.Type = "Infra"
-        # print(f"객체 타입: {self.Type}")
+        self.type = "Infra"
+        # print(f"객체 타입: {self.type}")
 
-        if not Name:
-            Name = input("인프라의 이름이 설정되지 않았습니다.ex) 신호등1: ")
-        self.Name = Name
+        if not name:
+            name = input("인프라의 이름이 설정되지 않았습니다.ex) 신호등1: ")
+        self.name = name
         # print(f"인프라 이름: {self.Name}")
 
         super().__init__(ip, sendPort, revPort)
@@ -103,7 +103,7 @@ class User:
                  role = "jobless", goal = "none"):
         # print("-----------------------------")
         # print("[User 설정시작]")
-        self.Type = "User"
+        self.type = "User"
         self.key = "space"
         # print(f"객체 타입: {self.Type}")
 
@@ -119,11 +119,11 @@ class User:
         self.Player = Player(namePlayer, ipPlayer, sendPortPlayer, revPortPlayer)
 
         self.drivingRecord = [ [f'userName = {self.userName}', 
-                                 f'nameKart = {self.Kart.Name}', 
+                                 f'nameKart = {self.Kart.name}', 
                                  f'ipKart = {self.Kart.ip}', 
                                  f'sendPortKart = {self.Kart.sendPort}', 
                                  f'revPortKart = {self.Kart.revPort}', 
-                                 f'namePlayer = {self.Player.Name}', 
+                                 f'namePlayer = {self.Player.name}', 
                                  f'ipPlayer = {self.Player.ip}', 
                                  f'sendPortPlayer = {self.Player.sendPort}', 
                                  f'revPortPlayer = {self.Player.revPort}', 
@@ -161,13 +161,13 @@ def get_Unique_Filename(directory, baseName, extension=".csv"):
     # 디렉토리 존재 여부 확인 및 생성
     os.makedirs(directory, existOk=True)
 
-    filename = f"{baseName}{extension}"
-    fullPath = os.path.join(directory, filename)
+    fileName = f"{baseName}{extension}"
+    fullPath = os.path.join(directory, fileName)
 
     counter = 1
     while os.path.exists(fullPath):
-        filename = f"{baseName}_{counter}{extension}"
-        fullPath = os.path.join(directory, filename)
+        fileName = f"{baseName}_{counter}{extension}"
+        fullPath = os.path.join(directory, fileName)
         counter += 1
 
     return fullPath
@@ -204,11 +204,11 @@ def csvFileSave(MACRON:list):
             with open(fileName, 'w', newLine = '', encoding = 'utf-8') as f:
                 writer = csv.writer(f)
                 # writer.writerow([f'userName = {MACRON[i].userName}', 
-                #                  f'nameKart = {MACRON[i].Kart.Name}', 
+                #                  f'nameKart = {MACRON[i].Kart.name}', 
                 #                  f'ipKart = {MACRON[i].Kart.ip}', 
                 #                  f'sendPortKart = {MACRON[i].Kart.sendPort}', 
                 #                  f'revPortKart = {MACRON[i].Kart.revPort}', 
-                #                  f'namePlayer = {MACRON[i].Player.Name}', 
+                #                  f'namePlayer = {MACRON[i].Player.name}', 
                 #                  f'ipPlayer = {MACRON[i].Player.ip}', 
                 #                  f'sendPortPlayer = {MACRON[i].Player.sendPort}', 
                 #                  f'revPortPlayer = {MACRON[i].Player.revPort}', 
@@ -223,7 +223,7 @@ def connecting(M:list):
     num = str(r.randrange(10,100))
     
     for i in range(len(M)):
-        if (M[i].Type == "User"):
+        if (M[i].type == "User"):
             print(f"[{M[i].userName}과 연결 시작]")
 
             # 플레이어 연결
@@ -363,13 +363,13 @@ def Player2Kart(U, msg):
         #     send(U.Kart, "space")
         #     U.key = msg
         # else:    
-            U.Kart.socket.sendto(msg.encode(), (U.Kart.ip, U.Kart.rev_Port)) # move
+            U.Kart.socket.sendto(msg.encode(), (U.Kart.ip, U.Kart.revPort)) # move
             print(f"Sent to [{U.Kart.Name}]ESP: {msg}")
             U.key = msg
         
 
     elif msg == "space":
-        U.Kart.socket.sendto("i".encode(), (U.Kart.ip, U.Kart.rev_Port))  # motor OFF
+        U.Kart.socket.sendto("i".encode(), (U.Kart.ip, U.Kart.revPort))  # motor OFF
         print(f"Sent to [{U.Kart.Name}]ESP: motor OFF")
 
     elif "enter" in msg:
@@ -407,10 +407,10 @@ def Player2Kart(U, msg):
                 send(U.Player, "해당 구간에서는 목적지를 확인할 수 없습니다.")
                 
     # elif msg == "m":
-    #     U.Kart.socket.sendto("ahrs".encode(), (U.Kart.ip, U.Kart.rev_Port))  # ahrs값
+    #     U.Kart.socket.sendto("ahrs".encode(), (U.Kart.ip, U.Kart.revPort))  # ahrs값
     #     print("ahrs값을 요청하는중...")
     # elif msg == "c":
-    #     U.Kart.socket.sendto("Color".encode(), (U.Kart.ip, U.Kart.rev_Port))  # ahrs값
+    #     U.Kart.socket.sendto("Color".encode(), (U.Kart.ip, U.Kart.revPort))  # ahrs값
     #     print("color값을 요청하는중...")
 
     else:
@@ -471,7 +471,7 @@ def Kart2Player(U,msg):
         # print(f"{U.userName}의 color:{msg}")
         U.Kart.colorName = msg
         print(f"{U.userName}의 color:{msg}")
-        # if(U.role=="rat"):
+        # if(U.role == "rat"):
         send(U.Player, f"[현재색]{U.Kart.colorName}")
 
 colorAll = ["mmdf", "red", "blue", "green", "pink", "orange", "sky", "white"]
@@ -479,7 +479,7 @@ colorRelation = {"mdf" : 7, "red" : 2, "blue" : 6, "green" : 8, "pink" : 3, "ora
 def colorAdjust(U):
     colorAll = ["mmdf", "red", "blue", "green", "pink", "orange", "sky", "white"]
     try:
-        if(U.Type == "User"):
+        if(U.type == "User"):
             pass
     except:
         print("wrong type in colorAdjust")
@@ -560,10 +560,10 @@ def colorAdjust(U):
     for i in range(len(storedColors)):
         msg += f"|{storedColors[i][0]}|{storedColors[i][1]}|{storedColors[i][2]}|{storedColors[i][3]}|{storedColors[i][4]}"
     print(f"형식:{type(storedColors[0][1])}")
-    sendmsg = msg
+    sendMsg = msg
 
     while 1:
-        send(U.Kart, sendmsg)
+        send(U.Kart, sendMsg)
 
         readable, _, _ = select.select(WorldSockets, [], [], 1)
 
@@ -679,7 +679,7 @@ macron = [Dao, Bazzi]
 # user분리
 userList = []
 for i in macron:
-    if i.Type == "User":
+    if i.type == "User":
         userList.append(i)
 
 print("*정상적으로 연결되지 않을 경우 네트 워크 설정을 확인하십시오.(공용 -> 개인 네트워크)")
@@ -750,7 +750,7 @@ while True:
 
             for i in range(len(macron)):
                 # try:
-                    if (macron[i].Type == "User"):
+                    if (macron[i].type == "User"):
                         
                         # Player에서 온 키 입력 처리
                         if sock == macron[i].Player.socket:
@@ -762,7 +762,7 @@ while True:
                             Kart2Player(macron[i], msg)
 
 
-                    elif (macron[i].Type == "Infra"):
+                    elif (macron[i].type == "Infra"):
                         # infra에서 온 데이터 처리1
                         if sock == macron[i].socket:
                             send(macron[i],msg)
