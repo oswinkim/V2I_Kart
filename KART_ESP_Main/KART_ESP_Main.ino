@@ -28,11 +28,11 @@ int motorBState = 250;
 int motorA =250;
 int motorB =250;
 // AHRS 설정
-// #define maxLineLength 64
-// HardwareSerial ahrsSerial(2);
+#define maxLineLength 64
+HardwareSerial ahrsSerial(2);
 float roll = 0, pitch = 0, yaw = 0.1, startYaw = 0;
-// char line[maxLineLength];
-// int lineIndex = 0;
+char line[maxLineLength];
+int lineIndex = 0;
 
 // 컬러 센서 설정
 // #define maxColors 6  // 색상 수 고정
@@ -103,9 +103,27 @@ void data(
     ) {
     currentTime = millis();
 
+    // 최신 AHRS 한 줄 수신
+    String latestLine = "";
+    unsigned long timeout = millis() + 100;
+    while (millis() < timeout) {
+        if (ahrsSerial.available()) {
+            char c = ahrsSerial.read();
+            if (c == '\n') break;
+            else latestLine += c;
+        }
+    }
 
     // yaw 추출
-    float yawDiff = 1;
+    float parsedYaw = yaw;
+    int firstComma = latestLine.indexOf(',');
+    int secondComma = latestLine.indexOf(',', firstComma + 1);
+    if (firstComma != -1 && secondComma != -1) {
+        String yawStr = latestLine.substring(secondComma + 1);
+        parsedYaw = yawStr.toFloat();
+    }
+    yaw = parsedYaw;
+    float yawDiff = startYaw - yaw;
 
     // 컬러 측정
     tcs.getRawData(&currentR, &currentG, &currentB, &currentC);
@@ -281,7 +299,7 @@ void setup() {
 
 
     Serial.begin(9600);
-    // ahrsSerial.begin(115200, SERIAL_8N1, 34, -1);
+    ahrsSerial.begin(115200, SERIAL_8N1, 34, -1);
     WiFi.begin(ssid, password);
 
     Serial.println("Connecting to WiFi...start");
@@ -346,19 +364,19 @@ void loop() {
         Serial.print("Received: ");
         Serial.println(packetBuffer);
 
-//         if (aa == 0 && strcmp(packetBuffer, "success") == 0) {
-//             aa = 1;
-//             startYaw = yaw;
-//             startTime = millis();
-//             Serial.println("connecting success:");
-//         } else if (aa == 0) {
-// //            data(startTime, motorAState, motorBState);
-//             udp.beginPacket(pc1Ip, sendPort);
-//             udp.write((const uint8_t*)packetBuffer, strlen(packetBuffer));
-//             udp.endPacket();
-//         }
+        if (aa == 0 && strcmp(packetBuffer, "success") == 0) {
+            aa = 1;
+            startYaw = yaw;
+            startTime = millis();
+            Serial.println("connecting success:");
+        } else if (aa == 0) {
+//            data(startTime, motorAState, motorBState);
+            udp.beginPacket(pc1Ip, sendPort);
+            udp.write((const uint8_t*)packetBuffer, strlen(packetBuffer));
+            udp.endPacket();
+        }
 
-        if (aa == 0) {
+        if (aa == 1) {
             motorAState = motorA;
             motorBState = motorB;
             if (strcmp(packetBuffer, "w") == 0) {
