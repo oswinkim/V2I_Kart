@@ -593,7 +593,7 @@ def goalSet(U):
     print(f"{U.userName}의 목표색은 [{color}]로 설정되었습니다.")
     
 
-def game_play():
+def gamePlay():
     global gameState
     global ratsLife
     if gameState != 0:
@@ -730,7 +730,7 @@ while True:
             gameState == -1
             print(f"게임값:{gameState}")
 
-        game_play()            
+        gamePlay()            
         if(gameState == -1):
             break
 
