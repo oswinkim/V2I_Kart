@@ -299,9 +299,191 @@ void colorName(){
       Serial.printf("Sending data: %s\n", msgBuffer);        }
 }
 
-void motorDeviation(){
+String motorDeviation(float error){
+  int leftMotorLeast = 100, rightMotorLeast = 100;
+  char weakMotor = 'A';
 
+  yawAhrs();
+  // 모터 최소 작동값 찾기
+  // 오른쪽 모터
+  while (1){
+    float beforeYaw = yaw;
+
+    ledcWrite(motorAIn1, 0);
+    ledcWrite(motorAIn2, 0);
+    ledcWrite(motorBIn1, rightMotorLeast);
+    ledcWrite(motorBIn2, 0);  
+    delay(3000);
+    ledcWrite(motorAIn1, 0);
+    ledcWrite(motorAIn2, 0);
+    ledcWrite(motorBIn1, 0);
+    ledcWrite(motorBIn2, 0);
+    delay(500);
+
+    yawAhrs();
+    if((yaw > beforeYaw * (1 + error) || yaw < beforeYaw * (1 - error))) break;
+    if(rightMotorLeast > 255){
+      rightMotorLeast = 0;
+      break;
+    }
+    rightMotorLeast += 10;
+  }
+  // 왼쪽 모터
+  while (1){
+    float beforeYaw = yaw;
+
+    ledcWrite(motorAIn1, leftMotorLeast);
+    ledcWrite(motorAIn2, 0);
+    ledcWrite(motorBIn1, 0);
+    ledcWrite(motorBIn2, 0);  
+    delay(3000);
+    ledcWrite(motorAIn1, 0);
+    ledcWrite(motorAIn2, 0);
+    ledcWrite(motorBIn1, 0);
+    ledcWrite(motorBIn2, 0);
+    delay(500);  
+
+    yawAhrs();
+    if((yaw > beforeYaw * (1 + error) || yaw < beforeYaw * (1 - error))) break;
+    if(leftMotorLeast > 255){
+      leftMotorLeast = 0;
+      break;
+    }
+
+    leftMotorLeast += 10;
+  }
+
+  // 약한 모터 찾기
+  if (1){
+    float beforeYaw = yaw;
+
+    ledcWrite(motorAIn1, leftMotorLeast);
+    ledcWrite(motorAIn2, 0);
+    ledcWrite(motorBIn1, rightMotorLeast);
+    ledcWrite(motorBIn2, 0);
+    delay(5000);
+    ledcWrite(motorAIn1, 0);
+    ledcWrite(motorAIn2, 0);
+    ledcWrite(motorBIn1, 0);
+    ledcWrite(motorBIn2, 0);  
+    delay(500);
+    ledcWrite(motorAIn1, 0);
+    ledcWrite(motorAIn2, leftMotorLeast);
+    ledcWrite(motorBIn1, 0);
+    ledcWrite(motorBIn2, rightMotorLeast);
+    delay(5000);
+    ledcWrite(motorAIn1, 0);
+    ledcWrite(motorAIn2, 0);
+    ledcWrite(motorBIn1, 0);
+    ledcWrite(motorBIn2, 0);  
+    delay(500);
+
+    yawAhrs();
+
+  if (abs(yaw - beforeYaw) > 200){
+    if (yaw > 0) weakMotor = 'B';
+    else weakMotor = 'A';
+  }
+  else{
+    if (yaw > beforeYaw) weakMotor = 'A';
+    else weakMotor = 'B';
+  }
+  }
+
+  // 모터 직선 값 찾기
+  int varMotorA = 0;
+  int varMotorB = 0;
+  
+  if (weakMotor == 'A'){
+    varMotorA = leftMotorLeast + 10;
+    while (1){
+      float beforeYaw = yaw;
+
+      ledcWrite(motorAIn1, varMotorA);
+      ledcWrite(motorAIn2, 0);
+      ledcWrite(motorBIn1, rightMotorLeast);
+      ledcWrite(motorBIn2, 0);
+      delay(5000);
+      ledcWrite(motorAIn1, 0);
+      ledcWrite(motorAIn2, 0);
+      ledcWrite(motorBIn1, 0);
+      ledcWrite(motorBIn2, 0);
+      delay(500);
+      ledcWrite(motorAIn1, 0);
+      ledcWrite(motorAIn2, varMotorA);
+      ledcWrite(motorBIn1, 0);
+      ledcWrite(motorBIn2, rightMotorLeast);
+      delay(5000);
+      ledcWrite(motorAIn1, 0);
+      ledcWrite(motorAIn2, 0);
+      ledcWrite(motorBIn1, 0);
+      ledcWrite(motorBIn2, 0);
+      delay(500);
+
+      yawAhrs();
+      if (abs(yaw - beforeYaw) > 200){
+        if (yaw > 0){ 
+          varMotorA -= 5;
+          break;
+        }
+      }
+      else{
+        if (yaw < beforeYaw){
+          varMotorA -= 5;
+          break;
+        }
+      }
+      varMotorA += 10;
+      }
+  }
+  else{
+    varMotorB = rightMotorLeast + 10;
+    while (1){
+      float beforeYaw = yaw;
+
+      ledcWrite(motorAIn1, leftMotorLeast);
+      ledcWrite(motorAIn2, 0);
+      ledcWrite(motorBIn1, varMotorB);
+      ledcWrite(motorBIn2, 0);
+      delay(5000);
+      ledcWrite(motorAIn1, 0);
+      ledcWrite(motorAIn2, 0);
+      ledcWrite(motorBIn1, 0);
+      ledcWrite(motorBIn2, 0);
+      delay(500);
+      ledcWrite(motorAIn1, 0);
+      ledcWrite(motorAIn2, leftMotorLeast);
+      ledcWrite(motorBIn1, 0);
+      ledcWrite(motorBIn2, varMotorB);
+      delay(5000);
+      ledcWrite(motorAIn1, 0);
+      ledcWrite(motorAIn2, 0);
+      ledcWrite(motorBIn1, 0);
+      ledcWrite(motorBIn2, 0);
+      delay(500);
+      
+      yawAhrs();
+      if (abs(yaw - beforeYaw) > 200){
+        if (yaw > 0){ 
+          varMotorA -= 5;
+          break;
+        }
+      }
+      else{
+        if (yaw < beforeYaw){
+          varMotorA -= 5;
+          break;
+        }
+      }
+      varMotorA += 10;
+      }
+  }
+
+  String msg = "[motorDeviation]|" + String(leftMotorLeast) + "|" + String(rightMotorLeast) + "|" +
+                  String(varMotorA) + "|" + String(varMotorB);
+  return msg;
 }
+
 
 void setup() {
 
@@ -378,7 +560,7 @@ void loop() {
             startTime = millis();
             Serial.println("connecting success:");
         } else if (aa == 0) {
-//            data(startTime, motorAState, motorBState);
+            // data(startTime, motorAState, motorBState);
             udp.beginPacket(pc1Ip, sendPort);
             udp.write((const uint8_t*)packetBuffer, strlen(packetBuffer));
             udp.endPacket();
