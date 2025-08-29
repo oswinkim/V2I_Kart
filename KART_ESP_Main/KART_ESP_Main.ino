@@ -295,6 +295,10 @@ void colorName(){
       Serial.printf("Sending data: %s\n", msgBuffer);        }
 }
 
+void motorDeviation(){
+
+}
+
 void setup() {
 
 
@@ -414,9 +418,7 @@ void loop() {
                 
             } else if (strcmp(packetBuffer, "[colorAdjust]") == 0){
               colorAdjust();
-            } 
-
-            else if (strcmp(packetBuffer, "ahrs") == 0) {
+            } else if (strcmp(packetBuffer, "ahrs") == 0) {
                 String msg = "[ahrs]" + String(yaw, 2);
                 char msgBuffer[64];
                 msg.toCharArray(msgBuffer, sizeof(msgBuffer));
@@ -452,16 +454,16 @@ void loop() {
                 delay(10000000);
             }
             else if(strcmp(packetBuffer, "[name]") == 0) {
-                          tcs.getRawData(&currentR, &currentG, &currentB, &currentC);
-            currentLux = tcs.calculateLux(currentR, currentG, currentB);
-            currentColorName = colorDefine(currentLux, currentR, currentG, currentB, tuningSize);
-            Serial.println(currentColorName);
-            char msgBuffer[64];
-            currentColorName.toCharArray(msgBuffer, sizeof(msgBuffer));
-            udp.beginPacket(pc1Ip, sendPort);
-            udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
-            udp.endPacket();
-            Serial.printf("[name] Sending data : %s\n", msgBuffer);    
+              tcs.getRawData(&currentR, &currentG, &currentB, &currentC);
+              currentLux = tcs.calculateLux(currentR, currentG, currentB);
+              currentColorName = colorDefine(currentLux, currentR, currentG, currentB, tuningSize);
+              Serial.println(currentColorName);
+              char msgBuffer[64];
+              currentColorName.toCharArray(msgBuffer, sizeof(msgBuffer));
+              udp.beginPacket(pc1Ip, sendPort);
+              udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
+              udp.endPacket();
+              Serial.printf("[name] Sending data : %s\n", msgBuffer);    
             }
 
             if(cc>0 && cc<30){
