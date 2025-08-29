@@ -30,7 +30,7 @@ int motorB =250;
 // AHRS 설정
 #define maxLineLength 64
 HardwareSerial ahrsSerial(2);
-float roll = 0, pitch = 0, yaw = 0.1, startYaw = 0;
+float roll = 0, pitch = 0, yaw = 0.1, startYaw = 0, yawDiff = 0;
 char line[maxLineLength];
 int lineIndex = 0;
 
@@ -95,56 +95,60 @@ String colorDefine(uint16_t lux, uint16_t r, uint16_t g, uint16_t b,  int tuning
   return tuning[minIndex][0];
 }
 
+void yawAhrs(){
+  // 최신 AHRS 한 줄 수신
+  String latestLine = "";
+  currentTime = millis();
+  unsigned long timeout = millis() + 100;
+  while (millis() < timeout) {
+      if (ahrsSerial.available()) {
+          char c = ahrsSerial.read();
+          if (c == '\n') break;
+          else latestLine += c;
+      }
+  }
+  
+  // yaw 추출
+  float parsedYaw = yaw;
+  int firstComma = latestLine.indexOf(',');
+  int secondComma = latestLine.indexOf(',', firstComma + 1);
+  if (firstComma != -1 && secondComma != -1) {
+      String yawStr = latestLine.substring(secondComma + 1);
+      parsedYaw = yawStr.toFloat();
+  }
+  yaw = parsedYaw;
+  yawDiff = startYaw - yaw;
+}
+
 // 데이터 전송 함수
 void data(
     unsigned long startTime,
     int motorAState,
     int motorBState
     ) {
-    currentTime = millis();
+      //yaw값 측정
+      yawAhrs();
 
-    // 최신 AHRS 한 줄 수신
-    String latestLine = "";
-    unsigned long timeout = millis() + 100;
-    while (millis() < timeout) {
-        if (ahrsSerial.available()) {
-            char c = ahrsSerial.read();
-            if (c == '\n') break;
-            else latestLine += c;
-        }
-    }
+      // 컬러 측정
+      tcs.getRawData(&currentR, &currentG, &currentB, &currentC);
+      currentLux = tcs.calculateLux(currentR, currentG, currentB);
+      currentColorName = colorDefine(currentLux, currentR, currentG, currentB, tuningSize);
 
-    // yaw 추출
-    float parsedYaw = yaw;
-    int firstComma = latestLine.indexOf(',');
-    int secondComma = latestLine.indexOf(',', firstComma + 1);
-    if (firstComma != -1 && secondComma != -1) {
-        String yawStr = latestLine.substring(secondComma + 1);
-        parsedYaw = yawStr.toFloat();
-    }
-    yaw = parsedYaw;
-    float yawDiff = startYaw - yaw;
+      // 전송
+      String msg = "[record]0|" + String(startTime) + "|" + String(currentTime) + "|" +
+                  String(motorAState) + "|" + String(motorBState) + "|" + String(yawDiff, 2) + "|" +
+                  currentColorName + "|" + String(currentLux) + "|" +
+                  String(currentR) + "|" + String(currentG) + "|" + String(currentB) + "|" +
+                  String(yaw, 2);
 
-    // 컬러 측정
-    tcs.getRawData(&currentR, &currentG, &currentB, &currentC);
-    currentLux = tcs.calculateLux(currentR, currentG, currentB);
-    currentColorName = colorDefine(currentLux, currentR, currentG, currentB, tuningSize);
+      char msgBuffer[128];
+      msg.toCharArray(msgBuffer, sizeof(msgBuffer));
 
-    // 전송
-    String msg = "[record]0|" + String(startTime) + "|" + String(currentTime) + "|" +
-                 String(motorAState) + "|" + String(motorBState) + "|" + String(yawDiff, 2) + "|" +
-                 currentColorName + "|" + String(currentLux) + "|" +
-                 String(currentR) + "|" + String(currentG) + "|" + String(currentB) + "|" +
-                 String(yaw, 2);
+      udp.beginPacket(pc1Ip, sendPort);
+      udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
+      udp.endPacket();
 
-    char msgBuffer[128];
-    msg.toCharArray(msgBuffer, sizeof(msgBuffer));
-
-    udp.beginPacket(pc1Ip, sendPort);
-    udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
-    udp.endPacket();
-
-    Serial.printf("Sending data: %s\n", msgBuffer);
+      Serial.printf("Sending data: %s\n", msgBuffer);
 }
 
 void sendRawColor(String name){
@@ -419,6 +423,7 @@ void loop() {
             } else if (strcmp(packetBuffer, "[colorAdjust]") == 0){
               colorAdjust();
             } else if (strcmp(packetBuffer, "ahrs") == 0) {
+                yawAhrs();
                 String msg = "[ahrs]" + String(yaw, 2);
                 char msgBuffer[64];
                 msg.toCharArray(msgBuffer, sizeof(msgBuffer));
@@ -437,23 +442,20 @@ void loop() {
                 udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
                 udp.endPacket();
                 Serial.printf("Sending data: %s\n", msgBuffer);
-            }
-            else if(strcmp(packetBuffer, "stop") == 0) {
+            } else if(strcmp(packetBuffer, "stop") == 0) {
                 ledcWrite(motorAIn1, 0);
                 ledcWrite(motorAIn2, 0);
                 ledcWrite(motorBIn1, 0);
                 ledcWrite(motorBIn2, 0);  
                 Serial.println("stop!!!!!!!!!!!!!!!!!!!");
                 delay(5000);   
-            }
-            else if(strcmp(packetBuffer, "[die]") == 0) {
+            } else if(strcmp(packetBuffer, "[die]") == 0) {
                 ledcWrite(motorAIn1, 0);
                 ledcWrite(motorAIn2, 0);
                 ledcWrite(motorBIn1, 0);
                 ledcWrite(motorBIn2, 0);     
                 delay(10000000);
-            }
-            else if(strcmp(packetBuffer, "[name]") == 0) {
+            } else if(strcmp(packetBuffer, "[name]") == 0) {
               tcs.getRawData(&currentR, &currentG, &currentB, &currentC);
               currentLux = tcs.calculateLux(currentR, currentG, currentB);
               currentColorName = colorDefine(currentLux, currentR, currentG, currentB, tuningSize);
@@ -465,7 +467,6 @@ void loop() {
               udp.endPacket();
               Serial.printf("[name] Sending data : %s\n", msgBuffer);    
             }
-
             if(cc>0 && cc<30){
                   String msg = "[save]";
                   char msgBuffer[512];
