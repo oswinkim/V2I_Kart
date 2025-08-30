@@ -550,7 +550,7 @@ void loop() {
   
     char packetBuffer[255];
     int packetSize = udp.parsePacket();
-    //data(startTime, motorAState, motorBState, startYaw);
+    
     if (packetSize) {
         // colorName();
 
@@ -579,33 +579,33 @@ void loop() {
                 ledcWrite(motorAIn2, 0);
                 ledcWrite(motorBIn1, motorBState);
                 ledcWrite(motorBIn2, 0);
-                // data(startTime, motorAState, motorBState, startYaw);
+                data(startTime, motorAState, motorBState);
             } else if (strcmp(packetBuffer, "a") == 0) {
                 motorBState = 200  ;
                 ledcWrite(motorAIn1, 0);
                 ledcWrite(motorAIn2, 0);
                 ledcWrite(motorBIn1, motorBState);
                 ledcWrite(motorBIn2, 0);
-                // data(startTime, motorAState, motorBState, startYaw);
+                data(startTime, motorAState, motorBState);
             } else if (strcmp(packetBuffer, "d") == 0) {
                 motorAState = 200;
                 ledcWrite(motorAIn1, motorAState);
                 ledcWrite(motorAIn2, 0);
                 ledcWrite(motorBIn1, 0);
                 ledcWrite(motorBIn2, 0);
-                // data(startTime, motorAState, motorBState, startYaw);
+                data(startTime, motorAState, motorBState);
             } else if (strcmp(packetBuffer, "s") == 0) {
                 ledcWrite(motorAIn1, 0);
                 ledcWrite(motorAIn2, motorAState);
                 ledcWrite(motorBIn1, 0);
                 ledcWrite(motorBIn2, motorBState);
-                // data(startTime, motorAState, motorBState, startYaw);
+                data(startTime, motorAState, motorBState);
             } else if (strcmp(packetBuffer, "i") == 0) {
                 ledcWrite(motorAIn1, 0);
                 ledcWrite(motorAIn2, 0);
                 ledcWrite(motorBIn1, 0);
                 ledcWrite(motorBIn2, 0);
-                // data(startTime, motorAState, motorBState, startYaw);
+                data(startTime, motorAState, motorBState);
                 
             } else if (strcmp(packetBuffer, "[colorAdjust]") == 0){
               colorAdjust();
