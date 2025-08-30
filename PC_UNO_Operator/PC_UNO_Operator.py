@@ -646,7 +646,7 @@ def gamePlay():
 # 실행 시 변경해야 할 부분
 
 worldSockets = []
-keysMove = ["w","a","s","d"]
+keysMove = ["w","a","s","d","="]
 
 gameState = 1
 
@@ -672,7 +672,7 @@ Dao = User(
 Bazzi = User(
         userName = "빨강",
         nameKart = "빨강색카트", ipKart = "192.168.3.197", sendPortKart = "7000", revPortKart = "7001",
-        namePlayer = "배찌", ipPlayer = "192.168.3.14", sendPortPlayer = "8000", revPortPlayer = "8000",
+        namePlayer = "배찌", ipPlayer = "192.168.3.187", sendPortPlayer = "8000", revPortPlayer = "8000",
         role="rat"
     )
     
@@ -699,7 +699,7 @@ for i in macron:
 print("*정상적으로 연결되지 않을 경우 네트 워크 설정을 확인하십시오.(공용 -> 개인 네트워크)")
 print("Waiting for key input from Player and data from Kart...")
 
-# connecting(macron)
+connecting(macron)
 
 
 # for i in userList:
@@ -769,7 +769,7 @@ while True:
                         # Player에서 온 키 입력 처리
                         if sock == macron[i].Player.socket:
                             Player2Kart(macron[i], msg)
-                            send(macron[i].Kart, "[name]")
+                            # send(macron[i].Kart, "[name]")
                         # Kart에서 온 데이터 처리
                         elif sock == macron[i].Kart.socket:
                             # print("Kart에서 데이터가 옴!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11")
