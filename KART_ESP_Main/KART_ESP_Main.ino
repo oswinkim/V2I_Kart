@@ -121,7 +121,7 @@ void yawAhrs(){
       }
   }
 
-  yaw = parsedYaw;
+  yaw = parsedYaw + 180;
   yawDiff = startYaw - yaw;
 }
 
@@ -307,23 +307,43 @@ void colorName(){
 String motorDeviation(float error){
   int leftMotorLeast = 100, rightMotorLeast = 100;
   char weakMotor = 'A';
-
   yawAhrs();
+
+  // 변수 재선언 오류를 방지하기 위해 timeout을 한 번만 선언합니다.
+  unsigned long timeout;
+
   // 모터 최소 작동값 찾기
   // 오른쪽 모터
+  Serial.println("[Finding least value]");
+  Serial.println("right motor finding!");
   while (1){
+    Serial.print("yaw:");
+    Serial.println(yaw);
     float beforeYaw = yaw;
 
     ledcWrite(motorAIn1, 0);
     ledcWrite(motorAIn2, 0);
     ledcWrite(motorBIn1, rightMotorLeast);
     ledcWrite(motorBIn2, 0);  
-    delay(3000);
+
+    timeout = millis() + 3000;
+    while (millis() < timeout) {
+      yawAhrs();
+    }
+
     ledcWrite(motorAIn1, 0);
     ledcWrite(motorAIn2, 0);
     ledcWrite(motorBIn1, 0);
     ledcWrite(motorBIn2, 0);
-    delay(500);
+    timeout = millis() + 500;
+    while (millis() < timeout) {
+      yawAhrs();
+    }
+
+    Serial.print("yaw:");
+    Serial.println(yaw);
+    Serial.print("right: ");
+    Serial.println(rightMotorLeast);
 
     yawAhrs();
     if((yaw > beforeYaw * (1 + error) || yaw < beforeYaw * (1 - error))) break;
@@ -334,22 +354,37 @@ String motorDeviation(float error){
     rightMotorLeast += 10;
   }
   // 왼쪽 모터
+  Serial.println("left motor finding!");
   while (1){
+    Serial.print("yaw:");
+    Serial.println(yaw);
     float beforeYaw = yaw;
 
     ledcWrite(motorAIn1, leftMotorLeast);
     ledcWrite(motorAIn2, 0);
     ledcWrite(motorBIn1, 0);
     ledcWrite(motorBIn2, 0);  
-    delay(3000);
+    timeout = millis() + 3000;
+    while (millis() < timeout) {
+      yawAhrs();
+    }
     ledcWrite(motorAIn1, 0);
     ledcWrite(motorAIn2, 0);
     ledcWrite(motorBIn1, 0);
     ledcWrite(motorBIn2, 0);
-    delay(500);  
+    timeout = millis() + 500;
+    while (millis() < timeout) {
+      yawAhrs();
+    }
+
+    Serial.print("yaw:");
+    Serial.println(yaw);
+    Serial.print("left: ");
+    Serial.println(leftMotorLeast);
+
 
     yawAhrs();
-    if((yaw > beforeYaw * (1 + error) || yaw < beforeYaw * (1 - error))) break;
+    if((yaw) > ( beforeYaw * (1 + error)) || (yaw) < (beforeYaw * (1 - error))) break;
     if(leftMotorLeast > 255){
       leftMotorLeast = 0;
       break;
@@ -357,35 +392,54 @@ String motorDeviation(float error){
 
     leftMotorLeast += 10;
   }
+  rightMotorLeast += 10;
+  leftMotorLeast += 10;
 
+  Serial.print("yaw:");
+  Serial.println(yaw);
   // 약한 모터 찾기
+  Serial.println("weak motor finding!");
   if (1){
     float beforeYaw = yaw;
+    Serial.print("yaw:");
+    Serial.println(yaw);
 
     ledcWrite(motorAIn1, leftMotorLeast);
     ledcWrite(motorAIn2, 0);
     ledcWrite(motorBIn1, rightMotorLeast);
     ledcWrite(motorBIn2, 0);
-    delay(5000);
+    timeout = millis() + 5000;
+    while (millis() < timeout) {
+      yawAhrs();
+    }
     ledcWrite(motorAIn1, 0);
     ledcWrite(motorAIn2, 0);
     ledcWrite(motorBIn1, 0);
     ledcWrite(motorBIn2, 0);  
-    delay(500);
+    timeout = millis() + 500;
+    while (millis() < timeout) {
+      yawAhrs();
+    }
     ledcWrite(motorAIn1, 0);
     ledcWrite(motorAIn2, leftMotorLeast);
     ledcWrite(motorBIn1, 0);
     ledcWrite(motorBIn2, rightMotorLeast);
-    delay(5000);
+    timeout = millis() + 5000;
+    while (millis() < timeout) {
+      yawAhrs();
+    }
     ledcWrite(motorAIn1, 0);
     ledcWrite(motorAIn2, 0);
     ledcWrite(motorBIn1, 0);
     ledcWrite(motorBIn2, 0);  
-    delay(500);
-
+    timeout = millis() + 500;
+    while (millis() < timeout) {
+      yawAhrs();
+    }
+    Serial.print("yaw:");
+    Serial.println(yaw);
     yawAhrs();
-
-  if (abs(yaw - beforeYaw) > 200){
+  if (abs(yaw + beforeYaw) > 360){
     if (yaw > 0) weakMotor = 'B';
     else weakMotor = 'A';
   }
@@ -395,38 +449,61 @@ String motorDeviation(float error){
   }
   }
 
+  Serial.println("motor straight finding!");
   // 모터 직선 값 찾기
   int varMotorA = 0;
   int varMotorB = 0;
   
+  Serial.print("yaw:");
+  Serial.println(yaw);
+
+  Serial.print("weakMotor: ");
+  Serial.println(weakMotor);
+
   if (weakMotor == 'A'){
-    varMotorA = leftMotorLeast + 10;
+    varMotorA = leftMotorLeast;
     while (1){
       float beforeYaw = yaw;
-
+      Serial.print("left: ");
+      Serial.println(varMotorA);
+      Serial.print("right: ");
+      Serial.println(rightMotorLeast);
+      
       ledcWrite(motorAIn1, varMotorA);
       ledcWrite(motorAIn2, 0);
       ledcWrite(motorBIn1, rightMotorLeast);
       ledcWrite(motorBIn2, 0);
-      delay(5000);
+      timeout = millis() + 5000;
+      while (millis() < timeout) {
+        yawAhrs();
+      }
       ledcWrite(motorAIn1, 0);
       ledcWrite(motorAIn2, 0);
       ledcWrite(motorBIn1, 0);
       ledcWrite(motorBIn2, 0);
-      delay(500);
+      timeout = millis() + 5000;
+      while (millis() < timeout) {
+        yawAhrs();
+      }
       ledcWrite(motorAIn1, 0);
       ledcWrite(motorAIn2, varMotorA);
       ledcWrite(motorBIn1, 0);
       ledcWrite(motorBIn2, rightMotorLeast);
-      delay(5000);
+      timeout = millis() + 5000;
+      while (millis() < timeout) {
+        yawAhrs();
+      }
       ledcWrite(motorAIn1, 0);
       ledcWrite(motorAIn2, 0);
       ledcWrite(motorBIn1, 0);
       ledcWrite(motorBIn2, 0);
-      delay(500);
+      timeout = millis() + 500;
+      while (millis() < timeout) {
+        yawAhrs();
+      }
 
       yawAhrs();
-      if (abs(yaw - beforeYaw) > 200){
+      if (abs(yaw - beforeYaw) >400){
         if (yaw > 0){ 
           varMotorA -= 5;
           break;
@@ -442,30 +519,46 @@ String motorDeviation(float error){
       }
   }
   else{
-    varMotorB = rightMotorLeast + 10;
+    varMotorB = rightMotorLeast;
     while (1){
       float beforeYaw = yaw;
+      Serial.print("left: ");
+      Serial.println(leftMotorLeast);
+      Serial.print("right: ");
+      Serial.println(varMotorB);
 
       ledcWrite(motorAIn1, leftMotorLeast);
       ledcWrite(motorAIn2, 0);
       ledcWrite(motorBIn1, varMotorB);
       ledcWrite(motorBIn2, 0);
-      delay(5000);
+      timeout = millis() + 5000;
+      while (millis() < timeout) {
+        yawAhrs();
+      }
       ledcWrite(motorAIn1, 0);
       ledcWrite(motorAIn2, 0);
       ledcWrite(motorBIn1, 0);
       ledcWrite(motorBIn2, 0);
-      delay(500);
+      timeout = millis() + 500;
+      while (millis() < timeout) {
+        yawAhrs();
+      }
       ledcWrite(motorAIn1, 0);
       ledcWrite(motorAIn2, leftMotorLeast);
       ledcWrite(motorBIn1, 0);
       ledcWrite(motorBIn2, varMotorB);
-      delay(5000);
+      timeout = millis() + 5000;
+      while (millis() < timeout) {
+        yawAhrs();
+      }
       ledcWrite(motorAIn1, 0);
       ledcWrite(motorAIn2, 0);
       ledcWrite(motorBIn1, 0);
       ledcWrite(motorBIn2, 0);
-      delay(500);
+      timeout = millis() + 500;
+      while (millis() < timeout) {
+        yawAhrs();
+      }
       
       yawAhrs();
       if (abs(yaw - beforeYaw) > 200){
@@ -485,7 +578,7 @@ String motorDeviation(float error){
   }
 
   String msg = "[motorDeviation]|" + String(leftMotorLeast) + "|" + String(rightMotorLeast) + "|" +
-                  String(varMotorA) + "|" + String(varMotorB);
+                String(varMotorA) + "|" + String(varMotorB);
   return msg;
 }
 
@@ -544,6 +637,7 @@ void setup() {
         Serial.println("No TCS34725 found ... check your connections");
         while (1);
     }
+    motorDeviation(0.2);
 }
 
 void loop() {
@@ -575,6 +669,7 @@ void loop() {
             motorAState = motorA;
             motorBState = motorB;
             if (strcmp(packetBuffer, "w") == 0) {
+                Serial.println("advance");
                 ledcWrite(motorAIn1, motorAState);
                 ledcWrite(motorAIn2, 0);
                 ledcWrite(motorBIn1, motorBState);
@@ -653,6 +748,8 @@ void loop() {
               udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
               udp.endPacket();
               Serial.printf("[name] Sending data : %s\n", msgBuffer);    
+            } else if(strcmp(packetBuffer,  "=") == 0){
+              motorDeviation(0.2);
             }
             if(cc>0 && cc<30){
                   String msg = "[save]";
