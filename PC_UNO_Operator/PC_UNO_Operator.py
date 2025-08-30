@@ -159,7 +159,7 @@ def sends(t:list, msg):
 
 def getUniqueFilename(directory, baseName, extension=".csv"):
     # 디렉토리 존재 여부 확인 및 생성
-    os.makedirs(directory, existOk=True)
+    os.makedirs(directory)
 
     fileName = f"{baseName}{extension}"
     fullPath = os.path.join(directory, fileName)
@@ -172,51 +172,64 @@ def getUniqueFilename(directory, baseName, extension=".csv"):
 
     return fullPath
 
-def csvFileSave(macron:list):
+import csv
+import os
+
+def getUniqueFilename(directory, baseName, extension=".csv"):
+    """
+    지정된 디렉토리에 고유한 파일 이름을 생성합니다.
+    """
+    # 디렉토리 존재 여부 확인 및 생성
+    os.makedirs(directory, exist_ok=True)
+
+    fileName = f"{baseName}{extension}"
+    fullPath = os.path.join(directory, fileName)
+
+    counter = 1
+    while os.path.exists(fullPath):
+        fileName = f"{baseName}_{counter}{extension}"
+        fullPath = os.path.join(directory, fileName)
+        counter += 1
+
+    return fullPath
+
+def csvFileSave(macron: list):
+    """
+    사용자의 입력에 따라 데이터를 CSV 파일로 저장합니다.
+    """
     for i in range(len(macron)):
-        if (macron[i].type == "User"):
-            qual = 0
-            while 1:
-                qual = input(f"{macron[i].userName}의 데이터 수집 결과 결정 (GOOD:2, NOMAL:1, BAD:0)\n입력: ")
+        if macron[i].type == "User":
+            qual = -1  # 유효하지 않은 값으로 초기화
+            while not (0 <= qual <= 2):
+                qual_str = input(f"{macron[i].userName}의 데이터 수집 결과 결정 (GOOD:2, NOMAL:1, BAD:0)\n입력: ")
                 try:
-                    qual = int(qual)
-                    if 0 <= qual <= 2:
-                        final = input(f"{qual}을 선택하신게 맞다면 1을 아니라면 0을 눌러주세요.\n입력:")
-                        print(f"{final}을 입력하셨습니다.")
-                        break
-                    else:
-                        print(f"{qual}을 입력하셨습니다.\n 0,1,2 중에 입력해주세요")
-                except:
-                    print(f"입력하신 자료형은 정수가 아닙니다.({type(qual)}형으로 입력됨)")
+                    qual = int(qual_str)
+                    if not (0 <= qual <= 2):
+                        print(f"'{qual_str}'은(는) 유효한 입력이 아닙니다. 0, 1, 2 중 하나를 입력해주세요.")
+                except ValueError:
+                    print(f"입력하신 자료형은 정수가 아닙니다. (입력값: '{qual_str}')")
 
+            # 선택된 값에 따라 qual 문자열 설정
             if qual == 0:
-                qual = "[bad]"
+                qual_str = "[bad]"
             elif qual == 1:
-                qual = "[nomal]"
+                qual_str = "[nomal]"
             else:
-                qual = "[good]"
+                qual_str = "[good]"
             
-            filePath = "c:\\Users\\PC-16\\Desktop\\V2I_Kart\\PC_UNO_Operator\\data\\" 
-            baseName = qual + macron[i].userName 
-            fileName = getUniqueFilename(filePath,baseName)
+            # 파일 저장 경로를 동적으로 설정하여 권한 문제를 방지
+            documents_path = os.path.join(os.path.expanduser('~'), 'Documents')
+            filePath = os.path.join(documents_path, 'V2I_Kart', 'PC_UNO_Operator', 'data')
 
+            baseName = qual_str + macron[i].userName
+            fileName = getUniqueFilename(filePath, baseName)
 
-            with open(fileName, 'w', newLine = '', encoding = 'utf-8') as f:
+            with open(fileName, 'w', newline='', encoding='utf-8') as f:
                 writer = csv.writer(f)
-                # writer.writerow([f'userName = {macron[i].userName}', 
-                #                  f'nameKart = {macron[i].Kart.name}', 
-                #                  f'ipKart = {macron[i].Kart.ip}', 
-                #                  f'sendPortKart = {macron[i].Kart.sendPort}', 
-                #                  f'revPortKart = {macron[i].Kart.revPort}', 
-                #                  f'namePlayer = {macron[i].Player.name}', 
-                #                  f'ipPlayer = {macron[i].Player.ip}', 
-                #                  f'sendPortPlayer = {macron[i].Player.sendPort}', 
-                #                  f'revPortPlayer = {macron[i].Player.revPort}', 
-                #                  ])
-                # writer.writerow([]) 
+                # writer.writerow(...)  # 주석 처리된 헤더 부분은 필요에 따라 사용하세요.
                 for row in macron[i].drivingRecord:
-                    writer.writerow(row)  # 각 행 쓰기
-                print(f"저장된 데이터 파일명: {fileName}")
+                    writer.writerow(row)
+                print(f"데이터를 성공적으로 저장했습니다: {fileName}")
 
 def connecting(m:list):
     # 난수 발생
@@ -226,29 +239,29 @@ def connecting(m:list):
         if (m[i].type == "User"):
             print(f"[{m[i].userName}과 연결 시작]")
 
-            # 플레이어 연결
-            print(f"\n플레이어[{m[i].Player.name}]와 연결중...")
-            while 1:
-                # 난수 전송
-                send(m[i].Player, num)
+            # # 플레이어 연결
+            # print(f"\n플레이어[{m[i].Player.name}]와 연결중...")
+            # while 1:
+            #     # 난수 전송
+            #     send(m[i].Player, num)
 
-                readable, _, _ = select.select(worldSockets, [], [], 1)
+            #     readable, _, _ = select.select(worldSockets, [], [], 1)
 
-                if not readable:
-                    print("재전송")
-                else:
-                    for sock in readable:
-                        data, addr = sock.recvfrom(1024)  # 데이터 수신
-                        msg = data.decode().strip()
+            #     if not readable:
+            #         print("재전송")
+            #     else:
+            #         for sock in readable:
+            #             data, addr = sock.recvfrom(1024)  # 데이터 수신
+            #             msg = data.decode().strip()
 
-                    if sock == m[i].Player.socket:
-                        if num in msg:
-                            print("연결성공!")
-                            send(m[i].Player, "success")
-                            break
-                        else:
-                            print("ERROR:요청하지 않은 메시지")
-                            print(f"msg:{msg}")
+            #         if sock == m[i].Player.socket:
+            #             if num in msg:
+            #                 print("연결성공!")
+            #                 send(m[i].Player, "success")
+            #                 break
+            #             else:
+            #                 print("ERROR:요청하지 않은 메시지")
+            #                 print(f"msg:{msg}")
 
             # 카트 연결
             print(f"\n카트[{m[i].Kart.name}]와 연결중...")
@@ -276,73 +289,73 @@ def connecting(m:list):
                             print("ERROR:요청하지 않은 메시지")
                             print(f"msg:{msg}")
 
-            # #AHRS 정상 작동 확인
-            # print(f"\n카트[{m[i].Kart.name}]의 AHRS센서 정상 작동 확인중...")
-            # while 1:
-            #     send(m[i].Kart, "ahrs")
+            #AHRS 정상 작동 확인
+            print(f"\n카트[{m[i].Kart.name}]의 AHRS센서 정상 작동 확인중...")
+            while 1:
+                send(m[i].Kart, "ahrs")
 
-            #     readable, _, _ = select.select(WorldSockets, [], [], 1)
+                readable, _, _ = select.select(worldSockets, [], [], 1)
                 
-            #     if not readable:
-            #         print("패스")
-            #     else:
-            #         for sock in readable:
-            #             data, addr = sock.recvfrom(1024)  # 데이터 수신
-            #             msg = data.decode().strip()
+                if not readable:
+                    print("패스")
+                else:
+                    for sock in readable:
+                        data, addr = sock.recvfrom(1024)  # 데이터 수신
+                        msg = data.decode().strip()
 
-            #         if sock == m[i].Kart.socket:
-            #             if "[ahrs]" in msg:
-            #                 msg = msg[6:]
-            #                 try:
-            #                     msg = float(msg)
-            #                     if abs(msg) > 0:
-            #                         M[i].Kart.ahrsStart = msg
-            #                         print("AHRS 정상 작동")
-            #                         print(f"작동값:{msg}")
-            #                         break
-            #                     else:
-            #                         print("ERROR:AHRS 오류")
-            #                         print(f"작동값:{msg}")
-            #                 except:
-            #                     print(f"ERROR:메시지 형식 오류")
-            #                     print(f"msg:{msg}")
-            #                     print(f"type:{type(msg)}")
+                    if sock == m[i].Kart.socket:
+                        if "[ahrs]" in msg:
+                            msg = msg[6:]
+                            try:
+                                msg = float(msg)
+                                if abs(msg) > 0:
+                                    m[i].Kart.ahrsStart = msg
+                                    print("AHRS 정상 작동")
+                                    print(f"작동값:{msg}")
+                                    break
+                                else:
+                                    print("ERROR:AHRS 오류")
+                                    print(f"작동값:{msg}")
+                            except:
+                                print(f"ERROR:메시지 형식 오류")
+                                print(f"msg:{msg}")
+                                print(f"type:{type(msg)}")
 
-            #             elif num not in msg:
-            #                 print("ERROR:요청하지 않은 메시지")
-            #                 print(f"msg:{msg}")
+                        elif num not in msg:
+                            print("ERROR:요청하지 않은 메시지")
+                            print(f"msg:{msg}")
 
-            # #color센서 정상 작동 확인
-            # print(f"\n카트[{m[i].Kart.name}]의 Color센서 정상 작동 확인중...")
-            # while 1:
-            #     send(m[i].Kart, "color")
+            #color센서 정상 작동 확인
+            print(f"\n카트[{m[i].Kart.name}]의 Color센서 정상 작동 확인중...")
+            while 1:
+                send(m[i].Kart, "color")
                 
-            #     readable, _, _ = select.select(WorldSockets, [], [], 1)
-            #     if not readable:
-            #         print("패스")
-            #     else:
-            #         for sock in readable:
-            #             data, addr = sock.recvfrom(1024)  # 데이터 수신
-            #             msg = data.decode().strip()
+                readable, _, _ = select.select(worldSockets, [], [], 1)
+                if not readable:
+                    print("패스")
+                else:
+                    for sock in readable:
+                        data, addr = sock.recvfrom(1024)  # 데이터 수신
+                        msg = data.decode().strip()
 
-            #         if sock == M[i].Kart.socket:
-            #             if "[color]" in msg:
-            #                 msg = msg[7:]
+                    if sock == m[i].Kart.socket:
+                        if "[color]" in msg:
+                            msg = msg[7:]
 
-            #                 lux, msgR, msgG, msgB = msg.split(',')
-            #                 if abs(int(lux)) > 0 and abs(int(msgR)) > 0 and abs(int(msgG)) > 0 and abs(int(msgB)) > 0:
-            #                     M[i].Kart.color = msg
-            #                     print("Color 정상 작동")
-            #                     print(f"작동값:{msg}")
-            #                     # print(f"현재색깔:{colorDefine(lux,msgR,msgG,msgB,colorTunning, "None")}")
-            #                     break
-            #                 else:
-            #                     print("ERROR:Color 오류")
-            #                     print(f"작동값:{msg}")
+                            lux, msgR, msgG, msgB = msg.split(',')
+                            if abs(int(lux)) > 0 and abs(int(msgR)) > 0 and abs(int(msgG)) > 0 and abs(int(msgB)) > 0:
+                                m[i].Kart.color = msg
+                                print("Color 정상 작동")
+                                print(f"작동값:{msg}")
+                                # print(f"현재색깔:{colorDefine(lux,msgR,msgG,msgB,colorTunning, "None")}")
+                                break
+                            else:
+                                print("ERROR:Color 오류")
+                                print(f"작동값:{msg}")
 
-            #             elif num not in msg:
-            #                 print("ERROR:요청하지 않은 메시지")
-            #                 print(f"msg:{msg}")
+                        elif num not in msg:
+                            print("ERROR:요청하지 않은 메시지")
+                            print(f"msg:{msg}")
 
             print(f"[{m[i].userName}과 연결 완료]\n")
 
@@ -458,15 +471,16 @@ def Kart2Player(U,msg):
     # #        print(f"Sent color Value to PC2: {msg}")
     #         Dao.Kart = msg
     # print(f"2Player:{msg}")
+    if "[record]" in msg:
+        msg = msg[8:]
+        histo = msg.split('|')
+        #msg = "0|1234|red|..."
+        #원상형태["현재구간", "최초 연결시간", "현재시간", "왼쪽 모터상태", "오른쪽 모터상태", "방향변환값","변환된 컬러값",  "LUX", "컬러R", "컬러G", "컬러B", "raw방향값"]
+        #최종형태["현재구간", "최초 연결시간", "현재시간", "왼쪽 모터상태", "오른쪽 모터상태", "방향변환값","변환된 컬러값",  "LUX", "컬러R", "컬러G", "컬러B", "raw방향값"]
+        #같음
+        U.drivingRecord.append(histo)
 
     if msg in colorAll:
-        # msg = msg[8:]
-        # histo = msg.split('|')
-        # #msg = "0|1234|red|..."
-        # #원상형태["현재구간", "최초 연결시간", "현재시간", "왼쪽 모터상태", "오른쪽 모터상태", "방향변환값","변환된 컬러값",  "LUX", "컬러R", "컬러G", "컬러B", "raw방향값"]
-        # #최종형태["현재구간", "최초 연결시간", "현재시간", "왼쪽 모터상태", "오른쪽 모터상태", "방향변환값","변환된 컬러값",  "LUX", "컬러R", "컬러G", "컬러B", "raw방향값"]
-        # #같음
-        # U.driving_record.append(histo)
 
         # print(f"{U.userName}의 color:{msg}")
         U.Kart.colorName = msg
@@ -657,8 +671,8 @@ Dao = User(
 
 Bazzi = User(
         userName = "빨강",
-        nameKart = "빨강색카트", ipKart = "192.168.0.13", sendPortKart = "7000", revPortKart = "7001",
-        namePlayer = "배찌", ipPlayer = "192.168.0.17", sendPortPlayer = "8000", revPortPlayer = "8001",
+        nameKart = "빨강색카트", ipKart = "192.168.3.197", sendPortKart = "7000", revPortKart = "7001",
+        namePlayer = "배찌", ipPlayer = "192.168.3.14", sendPortPlayer = "8000", revPortPlayer = "8000",
         role="rat"
     )
     
@@ -671,8 +685,8 @@ Bazzi = User(
 colorTime = {}
 
 # 통신하는 모든 객체들
-# macron = [Dao]
-macron = [Dao, Bazzi]
+macron = [Bazzi]
+# macron = [Dao, Bazzi]
 
 # 동작부분
 
