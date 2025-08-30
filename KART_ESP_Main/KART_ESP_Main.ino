@@ -10,7 +10,7 @@ const char* ssid = "a12";
 const char* password = "12345678";
 unsigned int recvPort = 7001;   //wifi연결 후 자동 설정
 unsigned int sendPort = 7000;
-IPAddress pc1Ip(192, 168, 0, 7);
+IPAddress pc1Ip(192, 168, 3, 228);
 
 int aa = 0;
 int bb = 0;
@@ -30,7 +30,7 @@ int motorB =250;
 // AHRS 설정
 #define maxLineLength 64
 HardwareSerial ahrsSerial(2);
-float roll = 0, pitch = 0, yaw = 0.1, startYaw = 0, yawDiff = 0;
+float roll = 0, pitch = 0, yaw = 0, startYaw = 0, yawDiff = 0;
 char line[maxLineLength];
 int lineIndex = 0;
 
@@ -110,12 +110,17 @@ void yawAhrs(){
   
   // yaw 추출
   float parsedYaw = yaw;
-  int firstComma = latestLine.indexOf(',');
-  int secondComma = latestLine.indexOf(',', firstComma + 1);
-  if (firstComma != -1 && secondComma != -1) {
-      String yawStr = latestLine.substring(secondComma + 1);
-      parsedYaw = yawStr.toFloat();
+  if (latestLine.startsWith("$EUL")) {
+      int firstComma  = latestLine.indexOf(',');
+      int secondComma = latestLine.indexOf(',', firstComma + 1);
+      int thirdComma  = latestLine.indexOf(',', secondComma + 1);
+
+      if (firstComma != -1 && secondComma != -1 && thirdComma != -1) {
+          String yawStr = latestLine.substring(thirdComma + 1);
+          parsedYaw = yawStr.toFloat();
+      }
   }
+
   yaw = parsedYaw;
   yawDiff = startYaw - yaw;
 }
