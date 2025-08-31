@@ -563,17 +563,17 @@ String motorDeviation(float error){
       yawAhrs();
       if (abs(yaw - beforeYaw) > 200){
         if (yaw > 0){ 
-          varMotorA -= 5;
+          varMotorB -= 5;
           break;
         }
       }
       else{
         if (yaw < beforeYaw){
-          varMotorA -= 5;
+          varMotorB -= 5;
           break;
         }
       }
-      varMotorA += 10;
+      varMotorB += 10;
       }
   }
 
