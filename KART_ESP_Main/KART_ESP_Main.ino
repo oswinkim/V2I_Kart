@@ -72,6 +72,8 @@ Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_154MS, TCS347
 unsigned long startTime = 0;
 unsigned long currentTime = 0;
 
+//-------------------------------------함수---------------------------------------------------------//
+
 // 메시지 전송 함수
 void sendMsg(String msg, int condition = 1, IPAddress ip = pc1Ip, unsigned int port = sendPort){
   udp.beginPacket(ip, port);
@@ -81,7 +83,7 @@ void sendMsg(String msg, int condition = 1, IPAddress ip = pc1Ip, unsigned int p
   if (condition ==1) Serial.printf("Sending data: %s\n", msg.c_str());
 }
 
-// 색 판단 함수
+// 색상 판단 함수
 String colorDefine(uint16_t lux, uint16_t r, uint16_t g, uint16_t b,  int tuningSize) {
   int raw[4] = {(int)lux, (int)r, (int)g, (int)b};
   long deviation[tuningSize];
@@ -104,6 +106,7 @@ String colorDefine(uint16_t lux, uint16_t r, uint16_t g, uint16_t b,  int tuning
   return tuning[minIndex][0];
 }
 
+// yaw값 업데이트 함수
 void yawAhrs(){
   // 최신 AHRS 한 줄 수신
   String latestLine = "";
@@ -158,6 +161,7 @@ void data(
       sendMsg(msg);
 }
 
+// 컬러센서 측정값 전송 함수
 void sendRawColor(String name){
   String Tuning[6][5];
   int luxAvg = 0, rAvg = 0, gAvg = 0, bAvg = 0;
@@ -195,6 +199,7 @@ void sendRawColor(String name){
   sendMsg(msg);
 }
 
+// 색상 보정 함수
 void colorAdjust() {
   while (1){
     char packetBuffer[255];
@@ -273,13 +278,13 @@ void colorAdjust() {
             break;
           }
             
-          }
-          }
-
         }
     }
-  
 
+  }
+}
+
+// 색상 이름 전송 함수
 void colorName(){
   tcs.getRawData(&currentR, &currentG, &currentB, &currentC);
   currentLux = tcs.calculateLux(currentR, currentG, currentB);
@@ -292,6 +297,7 @@ void colorName(){
       }
 }
 
+// 모터 편차 조정 함수
 String motorDeviation(float error){
   int leftMotorLeast = 100, rightMotorLeast = 100;
   char weakMotor = 'A';
@@ -544,6 +550,9 @@ void driving(int leftMotorValue, int rightMotorValue){
     ledcWrite(motorBIn2, -rightMotorValue);
   } 
 }
+
+//-------------------------------------실행---------------------------------------------------------//
+
 
 void setup() {
 
