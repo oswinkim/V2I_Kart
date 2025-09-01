@@ -156,6 +156,15 @@ void data(
       Serial.printf("Sending data: %s\n", msgBuffer);
 }
 
+// 메시지 전송 함수
+void send(String msg, int condition = 1, IPAddress ip = pc1Ip, unsigned int port = sendPort){
+  udp.beginPacket(ip, port);
+  udp.print(msg);
+  udp.endPacket();
+  
+  if (condition ==1) Serial.printf("Sending data: %s\n", msg.c_str());
+}
+
 void sendRawColor(String name){
   String Tuning[6][5];
   int luxAvg = 0, rAvg = 0, gAvg = 0, bAvg = 0;
