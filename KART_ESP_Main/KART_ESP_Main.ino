@@ -543,7 +543,7 @@ void driving(int leftMotorValue, int rightMotorValue){
   }
   else {
     ledcWrite(motorAIn1, 0);
-    ledcWrite(motorAIn2, -1 * leftMotorValue);
+    ledcWrite(motorAIn2, -leftMotorValue);
   } 
 
   // 오른쪽 모터 출력
@@ -553,7 +553,7 @@ void driving(int leftMotorValue, int rightMotorValue){
   }
   else {
     ledcWrite(motorBIn1, 0);
-    ledcWrite(motorBIn2, -1 * rightMotorValue);
+    ledcWrite(motorBIn2, -rightMotorValue);
   } 
 }
 
@@ -639,36 +639,21 @@ void loop() {
             motorBState = motorB;
             if (strcmp(packetBuffer, "w") == 0) {
                 Serial.println("advance");
-                ledcWrite(motorAIn1, motorAState);
-                ledcWrite(motorAIn2, 0);
-                ledcWrite(motorBIn1, motorBState);
-                ledcWrite(motorBIn2, 0);
+                driving(motorAStatet, motorBState);
                 data(startTime, motorAState, motorBState);
             } else if (strcmp(packetBuffer, "a") == 0) {
-                motorBState = 200  ;
-                ledcWrite(motorAIn1, 0);
-                ledcWrite(motorAIn2, 0);
-                ledcWrite(motorBIn1, motorBState);
-                ledcWrite(motorBIn2, 0);
+                motorBState = 200;
+                driving(0, motorBState);
                 data(startTime, motorAState, motorBState);
             } else if (strcmp(packetBuffer, "d") == 0) {
                 motorAState = 200;
-                ledcWrite(motorAIn1, motorAState);
-                ledcWrite(motorAIn2, 0);
-                ledcWrite(motorBIn1, 0);
-                ledcWrite(motorBIn2, 0);
+                driving(motorAState, 0);
                 data(startTime, motorAState, motorBState);
             } else if (strcmp(packetBuffer, "s") == 0) {
-                ledcWrite(motorAIn1, 0);
-                ledcWrite(motorAIn2, motorAState);
-                ledcWrite(motorBIn1, 0);
-                ledcWrite(motorBIn2, motorBState);
+                driving(-motorAState, -motorBState);
                 data(startTime, motorAState, motorBState);
             } else if (strcmp(packetBuffer, "i") == 0) {
-                ledcWrite(motorAIn1, 0);
-                ledcWrite(motorAIn2, 0);
-                ledcWrite(motorBIn1, 0);
-                ledcWrite(motorBIn2, 0);
+                driving(0, 0);
                 data(startTime, motorAState, motorBState);
                 
             } else if (strcmp(packetBuffer, "[colorAdjust]") == 0){
@@ -694,18 +679,12 @@ void loop() {
                 udp.endPacket();
                 Serial.printf("Sending data: %s\n", msgBuffer);
             } else if(strcmp(packetBuffer, "stop") == 0) {
-                ledcWrite(motorAIn1, 0);
-                ledcWrite(motorAIn2, 0);
-                ledcWrite(motorBIn1, 0);
-                ledcWrite(motorBIn2, 0);  
+                driving(0, 0);
                 Serial.println("stop!!!!!!!!!!!!!!!!!!!");
                 delay(5000);   
             } else if(strcmp(packetBuffer, "[die]") == 0) {
-                ledcWrite(motorAIn1, 0);
-                ledcWrite(motorAIn2, 0);
-                ledcWrite(motorBIn1, 0);
-                ledcWrite(motorBIn2, 0);     
-                delay(10000000);
+                driving(0, 0);
+                delay(1000);
             } else if(strcmp(packetBuffer, "[name]") == 0) {
               tcs.getRawData(&currentR, &currentG, &currentB, &currentC);
               currentLux = tcs.calculateLux(currentR, currentG, currentB);
