@@ -72,6 +72,15 @@ Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_154MS, TCS347
 unsigned long startTime = 0;
 unsigned long currentTime = 0;
 
+// 메시지 전송 함수
+void sendMsg(String msg, int condition = 1, IPAddress ip = pc1Ip, unsigned int port = sendPort){
+  udp.beginPacket(ip, port);
+  udp.print(msg);
+  udp.endPacket();
+  
+  if (condition ==1) Serial.printf("Sending data: %s\n", msg.c_str());
+}
+
 // 색 판단 함수
 String colorDefine(uint16_t lux, uint16_t r, uint16_t g, uint16_t b,  int tuningSize) {
   int raw[4] = {(int)lux, (int)r, (int)g, (int)b};
@@ -154,15 +163,6 @@ void data(
       udp.endPacket();
 
       Serial.printf("Sending data: %s\n", msgBuffer);
-}
-
-// 메시지 전송 함수
-void send(String msg, int condition = 1, IPAddress ip = pc1Ip, unsigned int port = sendPort){
-  udp.beginPacket(ip, port);
-  udp.print(msg);
-  udp.endPacket();
-  
-  if (condition ==1) Serial.printf("Sending data: %s\n", msg.c_str());
 }
 
 void sendRawColor(String name){
