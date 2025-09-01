@@ -582,9 +582,30 @@ String motorDeviation(float error){
   return msg;
 }
 
+// 모터 작동 함수
+void driving(int leftMotorValue, int rightMotorValue){
+  // 왼쪽 모터 출력
+  if (leftMotorValue >= 0) {
+    ledcWrite(motorAIn1, leftMotorValue);
+    ledcWrite(motorAIn2, 0);
+  }
+  else {
+    ledcWrite(motorAIn1, 0);
+    ledcWrite(motorAIn2, -1 * leftMotorValue);
+  } 
+
+  // 오른쪽 모터 출력
+  if (rightMotorValue >= 0) {
+    ledcWrite(motorBIn1, rightMotorValue);
+    ledcWrite(motorBIn2, 0);
+  }
+  else {
+    ledcWrite(motorBIn1, 0);
+    ledcWrite(motorBIn2, -1 * rightMotorValue);
+  } 
+}
 
 void setup() {
-
 
     Serial.begin(9600);
     ahrsSerial.begin(115200, SERIAL_8N1, 34, -1);
