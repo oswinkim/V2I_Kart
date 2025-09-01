@@ -600,17 +600,13 @@ void setup() {
     ledcAttach(motorBIn1, freq, resolution);
     ledcAttach(motorBIn2, freq, resolution);
 
-    ledcWrite(motorAIn1, 0);
-    ledcWrite(motorAIn2, 0);
-    ledcWrite(motorBIn1, 0);
-    ledcWrite(motorBIn2, 0);
+    driving(0, 0);
 
     Wire.begin(i2cSda, i2cScl);
     if (!tcs.begin()) {
         Serial.println("No TCS34725 found ... check your connections");
         while (1);
     }
-    motorDeviation(0.2);
 }
 
 void loop() {
