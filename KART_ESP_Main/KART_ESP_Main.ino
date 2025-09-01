@@ -321,20 +321,15 @@ String motorDeviation(float error){
     Serial.println(yaw);
     float beforeYaw = yaw;
 
-    ledcWrite(motorAIn1, 0);
-    ledcWrite(motorAIn2, 0);
-    ledcWrite(motorBIn1, rightMotorLeast);
-    ledcWrite(motorBIn2, 0);  
+    driving(0, rightMotorLeast);
 
     timeout = millis() + 3000;
     while (millis() < timeout) {
       yawAhrs();
     }
 
-    ledcWrite(motorAIn1, 0);
-    ledcWrite(motorAIn2, 0);
-    ledcWrite(motorBIn1, 0);
-    ledcWrite(motorBIn2, 0);
+    driving(0, 0);
+
     timeout = millis() + 500;
     while (millis() < timeout) {
       yawAhrs();
@@ -360,18 +355,12 @@ String motorDeviation(float error){
     Serial.println(yaw);
     float beforeYaw = yaw;
 
-    ledcWrite(motorAIn1, leftMotorLeast);
-    ledcWrite(motorAIn2, 0);
-    ledcWrite(motorBIn1, 0);
-    ledcWrite(motorBIn2, 0);  
+    driving(leftMotorLeast, 0);
     timeout = millis() + 3000;
     while (millis() < timeout) {
       yawAhrs();
     }
-    ledcWrite(motorAIn1, 0);
-    ledcWrite(motorAIn2, 0);
-    ledcWrite(motorBIn1, 0);
-    ledcWrite(motorBIn2, 0);
+    driving(0, 0);
     timeout = millis() + 500;
     while (millis() < timeout) {
       yawAhrs();
@@ -381,7 +370,6 @@ String motorDeviation(float error){
     Serial.println(yaw);
     Serial.print("left: ");
     Serial.println(leftMotorLeast);
-
 
     yawAhrs();
     if((yaw) > ( beforeYaw * (1 + error)) || (yaw) < (beforeYaw * (1 - error))) break;
@@ -404,34 +392,22 @@ String motorDeviation(float error){
     Serial.print("yaw:");
     Serial.println(yaw);
 
-    ledcWrite(motorAIn1, leftMotorLeast);
-    ledcWrite(motorAIn2, 0);
-    ledcWrite(motorBIn1, rightMotorLeast);
-    ledcWrite(motorBIn2, 0);
+    driving(leftMotorLeast, rightMotorLeast);
     timeout = millis() + 5000;
     while (millis() < timeout) {
       yawAhrs();
     }
-    ledcWrite(motorAIn1, 0);
-    ledcWrite(motorAIn2, 0);
-    ledcWrite(motorBIn1, 0);
-    ledcWrite(motorBIn2, 0);  
+    driving(0, 0);
     timeout = millis() + 500;
     while (millis() < timeout) {
       yawAhrs();
     }
-    ledcWrite(motorAIn1, 0);
-    ledcWrite(motorAIn2, leftMotorLeast);
-    ledcWrite(motorBIn1, 0);
-    ledcWrite(motorBIn2, rightMotorLeast);
+    driving(-leftMotorLeast, -rightMotorLeast);
     timeout = millis() + 5000;
     while (millis() < timeout) {
       yawAhrs();
     }
-    ledcWrite(motorAIn1, 0);
-    ledcWrite(motorAIn2, 0);
-    ledcWrite(motorBIn1, 0);
-    ledcWrite(motorBIn2, 0);  
+    driving(0, 0);
     timeout = millis() + 500;
     while (millis() < timeout) {
       yawAhrs();
@@ -468,35 +444,23 @@ String motorDeviation(float error){
       Serial.println(varMotorA);
       Serial.print("right: ");
       Serial.println(rightMotorLeast);
-      
-      ledcWrite(motorAIn1, varMotorA);
-      ledcWrite(motorAIn2, 0);
-      ledcWrite(motorBIn1, rightMotorLeast);
-      ledcWrite(motorBIn2, 0);
+
+      driving(varMotorA, rightMotorLeast);
       timeout = millis() + 5000;
       while (millis() < timeout) {
         yawAhrs();
       }
-      ledcWrite(motorAIn1, 0);
-      ledcWrite(motorAIn2, 0);
-      ledcWrite(motorBIn1, 0);
-      ledcWrite(motorBIn2, 0);
+      driving(0, 0);
       timeout = millis() + 5000;
       while (millis() < timeout) {
         yawAhrs();
       }
-      ledcWrite(motorAIn1, 0);
-      ledcWrite(motorAIn2, varMotorA);
-      ledcWrite(motorBIn1, 0);
-      ledcWrite(motorBIn2, rightMotorLeast);
+      driving(-varMotorA, -rightMotorLeast);
       timeout = millis() + 5000;
       while (millis() < timeout) {
         yawAhrs();
       }
-      ledcWrite(motorAIn1, 0);
-      ledcWrite(motorAIn2, 0);
-      ledcWrite(motorBIn1, 0);
-      ledcWrite(motorBIn2, 0);
+      driving(0, 0);
       timeout = millis() + 500;
       while (millis() < timeout) {
         yawAhrs();
@@ -527,34 +491,22 @@ String motorDeviation(float error){
       Serial.print("right: ");
       Serial.println(varMotorB);
 
-      ledcWrite(motorAIn1, leftMotorLeast);
-      ledcWrite(motorAIn2, 0);
-      ledcWrite(motorBIn1, varMotorB);
-      ledcWrite(motorBIn2, 0);
+      driving(leftMotorLeast, varMotorB);
       timeout = millis() + 5000;
       while (millis() < timeout) {
         yawAhrs();
       }
-      ledcWrite(motorAIn1, 0);
-      ledcWrite(motorAIn2, 0);
-      ledcWrite(motorBIn1, 0);
-      ledcWrite(motorBIn2, 0);
+      driving(0, 0);
       timeout = millis() + 500;
       while (millis() < timeout) {
         yawAhrs();
       }
-      ledcWrite(motorAIn1, 0);
-      ledcWrite(motorAIn2, leftMotorLeast);
-      ledcWrite(motorBIn1, 0);
-      ledcWrite(motorBIn2, varMotorB);
+      driving(-leftMotorLeast, -varMotorB)
       timeout = millis() + 5000;
       while (millis() < timeout) {
         yawAhrs();
       }
-      ledcWrite(motorAIn1, 0);
-      ledcWrite(motorAIn2, 0);
-      ledcWrite(motorBIn1, 0);
-      ledcWrite(motorBIn2, 0);
+      driving(0, 0);
       timeout = millis() + 500;
       while (millis() < timeout) {
         yawAhrs();
