@@ -501,7 +501,7 @@ String motorDeviation(float error){
       while (millis() < timeout) {
         yawAhrs();
       }
-      driving(-leftMotorLeast, -varMotorB)
+      driving(-leftMotorLeast, -varMotorB);
       timeout = millis() + 5000;
       while (millis() < timeout) {
         yawAhrs();
@@ -639,7 +639,7 @@ void loop() {
             motorBState = motorB;
             if (strcmp(packetBuffer, "w") == 0) {
                 Serial.println("advance");
-                driving(motorAStatet, motorBState);
+                driving(motorAState, motorBState);
                 data(startTime, motorAState, motorBState);
             } else if (strcmp(packetBuffer, "a") == 0) {
                 motorBState = 200;
