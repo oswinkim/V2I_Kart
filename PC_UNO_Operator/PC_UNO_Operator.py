@@ -46,7 +46,6 @@ class Common:
 
         worldSockets.append(self.socket)
 
-
 class Player(Common):
     def __init__(self, name = "", ip = "", sendPort = "", revPort = ""):
         # print("[Player 설정시작]")
@@ -156,24 +155,6 @@ def sends(t:list, msg):
     for target in t:
         target.socket.sendto(msg.encode(), (target.ip, target.revPort))
         print(f"{target.name}에게 {msg}를 보냈습니다.")
-
-def getUniqueFilename(directory, baseName, extension=".csv"):
-    # 디렉토리 존재 여부 확인 및 생성
-    os.makedirs(directory)
-
-    fileName = f"{baseName}{extension}"
-    fullPath = os.path.join(directory, fileName)
-
-    counter = 1
-    while os.path.exists(fullPath):
-        fileName = f"{baseName}_{counter}{extension}"
-        fullPath = os.path.join(directory, fileName)
-        counter += 1
-
-    return fullPath
-
-import csv
-import os
 
 def getUniqueFilename(directory, baseName, extension=".csv"):
     """
@@ -358,7 +339,6 @@ def connecting(m:list):
                             print(f"msg:{msg}")
 
             print(f"[{m[i].userName}과 연결 완료]\n")
-
 
 def Player2Kart(U, msg):
     global ratsLife
@@ -606,7 +586,6 @@ def goalSet(U):
     U.goal = color
     print(f"{U.userName}의 목표색은 [{color}]로 설정되었습니다.")
     
-
 def gamePlay():
     global gameState
     global ratsLife
@@ -643,13 +622,11 @@ def gamePlay():
             gameState = 1
             print(f"[게임상태:{gameState}]\n 게임재게")
             return
-# 실행 시 변경해야 할 부분
 
+# 실행 시 변경해야 할 부분
 worldSockets = []
 keysMove = ["w","a","s","d","="]
-
 gameState = 1
-
 
 """
 #함수 자동화 필요(컬러센서 마다 편차 존재)
@@ -675,13 +652,16 @@ Bazzi = User(
         namePlayer = "배찌", ipPlayer = "192.168.3.187", sendPortPlayer = "8000", revPortPlayer = "8000",
         role="rat"
     )
-    
+
+'''    
 # d = User(
 #         userName = "testuser",
 #         nameKart = "예비카트", ipKart = "192.168.0.14", sendPortKart = "4213", revPortKart = "4212",
 #         namePlayer = "다오예비", ipPlayer = "192.168.0.17", sendPortPlayer = "8000", revPortPlayer = "8001",
 #         role = "cat"
 #     )
+'''
+
 colorTime = {}
 
 # 통신하는 모든 객체들
@@ -701,11 +681,10 @@ print("Waiting for key input from Player and data from Kart...")
 
 connecting(macron)
 
-
-# for i in userList:
-#     if (i.role == "rat"):
-#         goalSet(i)
-#         ratList.append(i)
+for i in userList:
+    if (i.role == "rat"):
+        goalSet(i)
+        ratList.append(i)
 
 
 a = 0
@@ -720,9 +699,6 @@ while 1:
         print(f"{j.userName}의 목표:{j.goal}")
     print("이게 맞습니까?")
     a = (input(f"맞다면 1 아니라면 0: "))
-    
-    
-# 0719 
 
 # for i in userList:
 #     print("user의 Kart 색상 보정")
