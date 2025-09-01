@@ -155,14 +155,7 @@ void data(
                   String(currentR) + "|" + String(currentG) + "|" + String(currentB) + "|" +
                   String(yaw, 2);
 
-      char msgBuffer[128];
-      msg.toCharArray(msgBuffer, sizeof(msgBuffer));
-
-      udp.beginPacket(pc1Ip, sendPort);
-      udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
-      udp.endPacket();
-
-      Serial.printf("Sending data: %s\n", msgBuffer);
+      sendMsg(msg);
 }
 
 void sendRawColor(String name){
@@ -199,14 +192,7 @@ void sendRawColor(String name){
     msg += "|" + Tuning[i][j];
     }
   }
-    char msgBuffer[512];
-    msg.toCharArray(msgBuffer, sizeof(msgBuffer));
-
-    udp.beginPacket(pc1Ip, sendPort);
-    udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
-    udp.endPacket();
-    Serial.printf("Sending data: %s\n", msgBuffer);
-    // return luxAvg, rAvg, gAvg, bAvg;
+  sendMsg(msg);
 }
 
 void colorAdjust() {
@@ -225,9 +211,7 @@ void colorAdjust() {
             Serial.println("ready to color name...");
 
         } else if (bb == 0) {
-            udp.beginPacket(pc1Ip, sendPort);
-            udp.write((const uint8_t*)packetBuffer, strlen(packetBuffer));
-            udp.endPacket();
+          sendMsg(packetBuffer);
         }
         else if (bb = 1){
           // 변환!!
@@ -303,14 +287,9 @@ void colorName(){
   if (currentColorName.length() == 0) {
       Serial.println(currentColorName);
       String msg = "[colorName]" + currentColorName;
-      Serial.println(msg);
-      
-      char msgBuffer[64];
-      msg.toCharArray(msgBuffer, sizeof(msgBuffer));
-      udp.beginPacket(pc1Ip, sendPort);
-      udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
-      udp.endPacket();
-      Serial.printf("Sending data: %s\n", msgBuffer);        }
+
+      sendMsg(msg);
+      }
 }
 
 String motorDeviation(float error){
@@ -638,9 +617,7 @@ void loop() {
             Serial.println("connecting success:");
         } else if (aa == 0) {
             // data(startTime, motorAState, motorBState);
-            udp.beginPacket(pc1Ip, sendPort);
-            udp.write((const uint8_t*)packetBuffer, strlen(packetBuffer));
-            udp.endPacket();
+            sendMsg(packetBuffer);
         }
 
         if (aa == 1) {
@@ -670,23 +647,12 @@ void loop() {
             } else if (strcmp(packetBuffer, "ahrs") == 0) {
                 yawAhrs();
                 String msg = "[ahrs]" + String(yaw, 2);
-                char msgBuffer[64];
-                msg.toCharArray(msgBuffer, sizeof(msgBuffer));
-                udp.beginPacket(pc1Ip, sendPort);
-                udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
-                udp.endPacket();
-                Serial.printf("Sending data: %s\n", msgBuffer);
-
+                sendMsg(msg);
             } else if (strcmp(packetBuffer, "color") == 0) {
                 tcs.getRawData(&currentR, &currentG, &currentB, &currentC);
                 currentLux = tcs.calculateLux(currentR, currentG, currentB);
                 String msg = "[color]" + String(currentLux) + "," + String(currentR) + "," + String(currentG) + "," + String(currentB);
-                char msgBuffer[64];
-                msg.toCharArray(msgBuffer, sizeof(msgBuffer));
-                udp.beginPacket(pc1Ip, sendPort);
-                udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
-                udp.endPacket();
-                Serial.printf("Sending data: %s\n", msgBuffer);
+                sendMsg(msg);
             } else if(strcmp(packetBuffer, "stop") == 0) {
                 driving(0, 0);
                 Serial.println("stop!!!!!!!!!!!!!!!!!!!");
@@ -698,25 +664,13 @@ void loop() {
               tcs.getRawData(&currentR, &currentG, &currentB, &currentC);
               currentLux = tcs.calculateLux(currentR, currentG, currentB);
               currentColorName = colorDefine(currentLux, currentR, currentG, currentB, tuningSize);
-              Serial.println(currentColorName);
-              char msgBuffer[64];
-              currentColorName.toCharArray(msgBuffer, sizeof(msgBuffer));
-              udp.beginPacket(pc1Ip, sendPort);
-              udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
-              udp.endPacket();
-              Serial.printf("[name] Sending data : %s\n", msgBuffer);    
+              sendMsg(currentColorName);
             } else if(strcmp(packetBuffer,  "=") == 0){
               motorDeviation(0.2);
             }
             if(cc>0 && cc<30){
                   String msg = "[save]";
-                  char msgBuffer[512];
-                  msg.toCharArray(msgBuffer, sizeof(msgBuffer));
-
-                  udp.beginPacket(pc1Ip, sendPort);
-                  udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
-                  udp.endPacket();
-                  Serial.printf("Sending data: %s\n", msgBuffer);
+                  sendMsg(msg);
             }
     
  
