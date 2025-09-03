@@ -137,8 +137,8 @@ void yawAhrs(){
   yawDiff = startYaw - yaw;
 }
 
-// 데이터 전송 함수
-void data(
+// 데이터 문자열 생성 함수
+String data(
     unsigned long startTime,
     int motorAState,
     int motorBState
@@ -158,11 +158,11 @@ void data(
                   String(currentR) + "|" + String(currentG) + "|" + String(currentB) + "|" +
                   String(yaw, 2);
 
-      sendMsg(msg);
+      return msg;
 }
 
-// 컬러센서 측정값 전송 함수
-void sendRawColor(String name){
+// 컬러센서 보정용 데이터 생성 함수
+String sendRawColor(String name){
   String Tuning[6][5];
   int luxAvg = 0, rAvg = 0, gAvg = 0, bAvg = 0;
   for(int i=0;i<5;i++){
@@ -196,7 +196,7 @@ void sendRawColor(String name){
     msg += "|" + Tuning[i][j];
     }
   }
-  sendMsg(msg);
+  return msg;
 }
 
 // 색상 보정 함수
@@ -229,7 +229,7 @@ void colorAdjust() {
             String name = packetStr.substring(String("color=").length());
             Serial.print("name: ");
             Serial.println(name);
-            sendRawColor(name);
+            sendMsg(sendRawColor(name));
           } 
           else if (packetStr.startsWith("colorData")) {
             Serial.print("[colorData!!=]");
@@ -284,17 +284,11 @@ void colorAdjust() {
   }
 }
 
-// 색상 이름 전송 함수
+// 색상 이름 업데이트 함수
 void colorName(){
   tcs.getRawData(&currentR, &currentG, &currentB, &currentC);
   currentLux = tcs.calculateLux(currentR, currentG, currentB);
   currentColorName = colorDefine(currentLux, currentR, currentG, currentB, tuningSize);
-  if (currentColorName.length() == 0) {
-      Serial.println(currentColorName);
-      String msg = "[colorName]" + currentColorName;
-
-      sendMsg(msg);
-      }
 }
 
 // 모터 편차 조정 함수
@@ -530,7 +524,7 @@ String motorDeviation(float error){
 
   // 20cm 거리 도달 시간 측정
   unsigned long arrivalTime;
-  String pointColor = "mdf"
+  String pointColor = "mdf";
 
   delay(delayDistance);
 
@@ -653,7 +647,7 @@ void loop() {
             startTime = millis();
             Serial.println("connecting success:");
         } else if (aa == 0) {
-            // data(startTime, motorAState, motorBState);
+            // sendMsg(data(startTime, motorAState, motorBState));
             sendMsg(packetBuffer);
         }
 
@@ -663,21 +657,21 @@ void loop() {
             if (strcmp(packetBuffer, "w") == 0) {
                 Serial.println("advance");
                 driving(motorAState, motorBState);
-                data(startTime, motorAState, motorBState);
+                sendMsg(data(startTime, motorAState, motorBState));
             } else if (strcmp(packetBuffer, "a") == 0) {
                 motorBState = 200;
                 driving(0, motorBState);
-                data(startTime, motorAState, motorBState);
+                sendMsg(data(startTime, motorAState, motorBState));
             } else if (strcmp(packetBuffer, "d") == 0) {
                 motorAState = 200;
                 driving(motorAState, 0);
-                data(startTime, motorAState, motorBState);
+                sendMsg(data(startTime, motorAState, motorBState));
             } else if (strcmp(packetBuffer, "s") == 0) {
                 driving(-motorAState, -motorBState);
-                data(startTime, motorAState, motorBState);
+                sendMsg(data(startTime, motorAState, motorBState));
             } else if (strcmp(packetBuffer, "i") == 0) {
                 driving(0, 0);
-                data(startTime, motorAState, motorBState);
+                sendMsg(data(startTime, motorAState, motorBState));
                 
             } else if (strcmp(packetBuffer, "[colorAdjust]") == 0){
               colorAdjust();
