@@ -330,7 +330,22 @@ String motorDeviation(float error){
     Serial.println(rightMotorLeast);
 
     yawAhrs();
-    if((yaw > beforeYaw * (1 + error) || yaw < beforeYaw * (1 - error))) break;
+    if((yaw > beforeYaw * (1 + error) || yaw < beforeYaw * (1 - error))) {
+      driving(0, -rightMotorLeast);
+
+      timeout = millis() + delayLeastMotor;
+      while (millis() < timeout) {
+        yawAhrs();
+      }
+
+      driving(0, 0);
+
+      timeout = millis() + delayStop;
+      while (millis() < timeout) {
+        yawAhrs();
+      }
+      break;
+    }
     if(rightMotorLeast > 255){
       rightMotorLeast = 0;
       break;
@@ -361,7 +376,19 @@ String motorDeviation(float error){
     Serial.println(leftMotorLeast);
 
     yawAhrs();
-    if((yaw) > ( beforeYaw * (1 + error)) || (yaw) < (beforeYaw * (1 - error))) break;
+    if((yaw) > ( beforeYaw * (1 + error)) || (yaw) < (beforeYaw * (1 - error))){
+      driving(-leftMotorLeast, 0);
+      timeout = millis() + delayLeastMotor;
+      while (millis() < timeout) {
+        yawAhrs();
+      }
+      driving(0, 0);
+      timeout = millis() + delayStop;
+      while (millis() < timeout) {
+        yawAhrs();
+      }
+      break;
+    }
     if(leftMotorLeast > 255){
       leftMotorLeast = 0;
       break;
