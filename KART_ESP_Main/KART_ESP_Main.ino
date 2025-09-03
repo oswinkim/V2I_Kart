@@ -308,7 +308,7 @@ String motorDeviation(float error){
   int leftMotorLeast = 100, rightMotorLeast = 100;
   char weakMotor = 'A';
   unsigned long timeout;
-  unsigned long delayLeastMotor = 3000, delayWeakMotor = 5000, delayStraightMotor = 3000, delayStop = 500;
+  unsigned long delayLeastMotor = 3000, delayWeakMotor = 5000, delayStraightMotor = 3000, delayDistance = 10000 ,delayStop = 500;
 
   yawAhrs();
 
@@ -577,8 +577,22 @@ String motorDeviation(float error){
       }
   }
 
+  // 20cm 거리 도달 시간 측정
+  unsigned long arrivalTime;
+  String pointColor = "mdf"
+
+  delay(delayDistance);
+
+  while (1){
+    if (currentColorName == pointColor) break;
+  }
+
+  // 포인트 컬러까지 전진 및 시간 측정 코드 작성  
+
+
+
   String msg = "[motorDeviation]|" + String(leftMotorLeast) + "|" + String(rightMotorLeast) + "|" +
-                String(varMotorA) + "|" + String(varMotorB);
+                String(varMotorA) + "|" + String(varMotorB) + "|" + String();
   return msg;
 }
 
