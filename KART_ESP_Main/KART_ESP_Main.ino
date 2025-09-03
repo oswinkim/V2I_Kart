@@ -300,9 +300,10 @@ void colorName(){
 // 모터 편차 조정 함수
 String motorDeviation(float error){
   int leftMotorLeast = 100, rightMotorLeast = 100;
+  int leftMotorStraight = 0, rightMotorStraight = 0;
   char weakMotor = 'A';
   unsigned long timeout;
-  unsigned long delayLeastMotor = 3000, delayWeakMotor = 5000, delayStraightMotor = 3000, delayDistance = 10000 ,delayStop = 500;
+  unsigned long delayLeastMotor = 3000, delayWeakMotor = 5000, delayStraightMotor = 3000, delayDistance = 2000 ,delayStop = 500;
 
   yawAhrs();
 
@@ -475,6 +476,8 @@ String motorDeviation(float error){
       }
       varMotorA += 10;
       }
+      leftMotorStraight = varMotorA;
+      rightMotorStraight = rightMotorLeast;
   }
   else{
     varMotorB = rightMotorLeast;
@@ -521,6 +524,8 @@ String motorDeviation(float error){
       }
       varMotorB += 10;
       }
+      leftMotorStraight = leftMotorLeast;
+      rightMotorStraight = varMotorB;
   }
 
   // 20cm 거리 도달 시간 측정
@@ -532,13 +537,22 @@ String motorDeviation(float error){
   while (1){
     if (currentColorName == pointColor) break;
   }
+  unsigned long startTime = millis();
 
-  // 포인트 컬러까지 전진 및 시간 측정 코드 작성  
+  driving(leftMotorStraight, rightMotorStraight);
+  delay(delayDistance);
+  while(currentColorName != pointColor){
+    // 색상 업데이트
+    colorName();
+  }
+  unsigned long actionTime = millis() - startTime;
 
-
+  delay(delayDistance);
+  driving(-leftMotorStraight, -rightMotorStraight);
+  delay(actionTime);
 
   String msg = "[motorDeviation]|" + String(leftMotorLeast) + "|" + String(rightMotorLeast) + "|" +
-                String(varMotorA) + "|" + String(varMotorB) + "|" + String();
+                String(leftMotorStraight) + "|" + String(rightMotorStraight) + "|" + String(actionTime);
   return msg;
 }
 
