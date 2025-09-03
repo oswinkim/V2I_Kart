@@ -307,10 +307,10 @@ void colorName(){
 String motorDeviation(float error){
   int leftMotorLeast = 100, rightMotorLeast = 100;
   char weakMotor = 'A';
-  yawAhrs();
-
-  // 변수 재선언 오류를 방지하기 위해 timeout을 한 번만 선언합니다.
   unsigned long timeout;
+  unsigned long delayLeastMotor = 3000, delayWeakMotor = 5000, delayStraightMotor = 3000, delayStop = 500;
+
+  yawAhrs();
 
   // 모터 최소 작동값 찾기
   // 오른쪽 모터
@@ -326,7 +326,7 @@ String motorDeviation(float error){
     ledcWrite(motorBIn1, rightMotorLeast);
     ledcWrite(motorBIn2, 0);  
 
-    timeout = millis() + 3000;
+    timeout = millis() + delayLeastMotor;
     while (millis() < timeout) {
       yawAhrs();
     }
@@ -335,7 +335,7 @@ String motorDeviation(float error){
     ledcWrite(motorAIn2, 0);
     ledcWrite(motorBIn1, 0);
     ledcWrite(motorBIn2, 0);
-    timeout = millis() + 500;
+    timeout = millis() + delayStop;
     while (millis() < timeout) {
       yawAhrs();
     }
@@ -364,7 +364,7 @@ String motorDeviation(float error){
     ledcWrite(motorAIn2, 0);
     ledcWrite(motorBIn1, 0);
     ledcWrite(motorBIn2, 0);  
-    timeout = millis() + 3000;
+    timeout = millis() + delayLeastMotor;
     while (millis() < timeout) {
       yawAhrs();
     }
@@ -372,7 +372,7 @@ String motorDeviation(float error){
     ledcWrite(motorAIn2, 0);
     ledcWrite(motorBIn1, 0);
     ledcWrite(motorBIn2, 0);
-    timeout = millis() + 500;
+    timeout = millis() + delayStop;
     while (millis() < timeout) {
       yawAhrs();
     }
@@ -408,7 +408,7 @@ String motorDeviation(float error){
     ledcWrite(motorAIn2, 0);
     ledcWrite(motorBIn1, rightMotorLeast);
     ledcWrite(motorBIn2, 0);
-    timeout = millis() + 5000;
+    timeout = millis() + delayWeakMotor;
     while (millis() < timeout) {
       yawAhrs();
     }
@@ -416,7 +416,7 @@ String motorDeviation(float error){
     ledcWrite(motorAIn2, 0);
     ledcWrite(motorBIn1, 0);
     ledcWrite(motorBIn2, 0);  
-    timeout = millis() + 500;
+    timeout = millis() + delayStop;
     while (millis() < timeout) {
       yawAhrs();
     }
@@ -424,7 +424,7 @@ String motorDeviation(float error){
     ledcWrite(motorAIn2, leftMotorLeast);
     ledcWrite(motorBIn1, 0);
     ledcWrite(motorBIn2, rightMotorLeast);
-    timeout = millis() + 5000;
+    timeout = millis() + delayWeakMotor;
     while (millis() < timeout) {
       yawAhrs();
     }
@@ -432,7 +432,7 @@ String motorDeviation(float error){
     ledcWrite(motorAIn2, 0);
     ledcWrite(motorBIn1, 0);
     ledcWrite(motorBIn2, 0);  
-    timeout = millis() + 500;
+    timeout = millis() + delayStop;
     while (millis() < timeout) {
       yawAhrs();
     }
@@ -473,7 +473,7 @@ String motorDeviation(float error){
       ledcWrite(motorAIn2, 0);
       ledcWrite(motorBIn1, rightMotorLeast);
       ledcWrite(motorBIn2, 0);
-      timeout = millis() + 5000;
+      timeout = millis() + delayStraightMotor;
       while (millis() < timeout) {
         yawAhrs();
       }
@@ -481,7 +481,7 @@ String motorDeviation(float error){
       ledcWrite(motorAIn2, 0);
       ledcWrite(motorBIn1, 0);
       ledcWrite(motorBIn2, 0);
-      timeout = millis() + 5000;
+      timeout = millis() + delayStraightMotor;
       while (millis() < timeout) {
         yawAhrs();
       }
@@ -489,7 +489,7 @@ String motorDeviation(float error){
       ledcWrite(motorAIn2, varMotorA);
       ledcWrite(motorBIn1, 0);
       ledcWrite(motorBIn2, rightMotorLeast);
-      timeout = millis() + 5000;
+      timeout = millis() + delayStraightMotor;
       while (millis() < timeout) {
         yawAhrs();
       }
@@ -497,7 +497,7 @@ String motorDeviation(float error){
       ledcWrite(motorAIn2, 0);
       ledcWrite(motorBIn1, 0);
       ledcWrite(motorBIn2, 0);
-      timeout = millis() + 500;
+      timeout = millis() + delayStop;
       while (millis() < timeout) {
         yawAhrs();
       }
@@ -531,7 +531,7 @@ String motorDeviation(float error){
       ledcWrite(motorAIn2, 0);
       ledcWrite(motorBIn1, varMotorB);
       ledcWrite(motorBIn2, 0);
-      timeout = millis() + 5000;
+      timeout = millis() + delayStraightMotor;
       while (millis() < timeout) {
         yawAhrs();
       }
@@ -539,7 +539,7 @@ String motorDeviation(float error){
       ledcWrite(motorAIn2, 0);
       ledcWrite(motorBIn1, 0);
       ledcWrite(motorBIn2, 0);
-      timeout = millis() + 500;
+      timeout = millis() + delayStop;
       while (millis() < timeout) {
         yawAhrs();
       }
@@ -547,7 +547,7 @@ String motorDeviation(float error){
       ledcWrite(motorAIn2, leftMotorLeast);
       ledcWrite(motorBIn1, 0);
       ledcWrite(motorBIn2, varMotorB);
-      timeout = millis() + 5000;
+      timeout = millis() + delayStraightMotor;
       while (millis() < timeout) {
         yawAhrs();
       }
@@ -555,7 +555,7 @@ String motorDeviation(float error){
       ledcWrite(motorAIn2, 0);
       ledcWrite(motorBIn1, 0);
       ledcWrite(motorBIn2, 0);
-      timeout = millis() + 500;
+      timeout = millis() + delayStop;
       while (millis() < timeout) {
         yawAhrs();
       }
