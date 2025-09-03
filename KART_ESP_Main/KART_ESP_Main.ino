@@ -72,7 +72,18 @@ Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_154MS, TCS347
 unsigned long startTime = 0;
 unsigned long currentTime = 0;
 
-// 색 판단 함수
+//-------------------------------------함수---------------------------------------------------------//
+
+// 메시지 전송 함수
+void sendMsg(String msg, int condition = 1, IPAddress ip = pc1Ip, unsigned int port = sendPort){
+  udp.beginPacket(ip, port);
+  udp.print(msg);
+  udp.endPacket();
+  
+  if (condition ==1) Serial.printf("Sending data: %s\n", msg.c_str());
+}
+
+// 색상 판단 함수
 String colorDefine(uint16_t lux, uint16_t r, uint16_t g, uint16_t b,  int tuningSize) {
   int raw[4] = {(int)lux, (int)r, (int)g, (int)b};
   long deviation[tuningSize];
@@ -95,6 +106,7 @@ String colorDefine(uint16_t lux, uint16_t r, uint16_t g, uint16_t b,  int tuning
   return tuning[minIndex][0];
 }
 
+// yaw값 업데이트 함수
 void yawAhrs(){
   // 최신 AHRS 한 줄 수신
   String latestLine = "";
@@ -146,16 +158,10 @@ void data(
                   String(currentR) + "|" + String(currentG) + "|" + String(currentB) + "|" +
                   String(yaw, 2);
 
-      char msgBuffer[128];
-      msg.toCharArray(msgBuffer, sizeof(msgBuffer));
-
-      udp.beginPacket(pc1Ip, sendPort);
-      udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
-      udp.endPacket();
-
-      Serial.printf("Sending data: %s\n", msgBuffer);
+      sendMsg(msg);
 }
 
+// 컬러센서 측정값 전송 함수
 void sendRawColor(String name){
   String Tuning[6][5];
   int luxAvg = 0, rAvg = 0, gAvg = 0, bAvg = 0;
@@ -190,16 +196,10 @@ void sendRawColor(String name){
     msg += "|" + Tuning[i][j];
     }
   }
-    char msgBuffer[512];
-    msg.toCharArray(msgBuffer, sizeof(msgBuffer));
-
-    udp.beginPacket(pc1Ip, sendPort);
-    udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
-    udp.endPacket();
-    Serial.printf("Sending data: %s\n", msgBuffer);
-    // return luxAvg, rAvg, gAvg, bAvg;
+  sendMsg(msg);
 }
 
+// 색상 보정 함수
 void colorAdjust() {
   while (1){
     char packetBuffer[255];
@@ -216,9 +216,7 @@ void colorAdjust() {
             Serial.println("ready to color name...");
 
         } else if (bb == 0) {
-            udp.beginPacket(pc1Ip, sendPort);
-            udp.write((const uint8_t*)packetBuffer, strlen(packetBuffer));
-            udp.endPacket();
+          sendMsg(packetBuffer);
         }
         else if (bb = 1){
           // 변환!!
@@ -280,13 +278,13 @@ void colorAdjust() {
             break;
           }
             
-          }
-          }
-
         }
     }
-  
 
+  }
+}
+
+// 색상 이름 전송 함수
 void colorName(){
   tcs.getRawData(&currentR, &currentG, &currentB, &currentC);
   currentLux = tcs.calculateLux(currentR, currentG, currentB);
@@ -294,16 +292,12 @@ void colorName(){
   if (currentColorName.length() == 0) {
       Serial.println(currentColorName);
       String msg = "[colorName]" + currentColorName;
-      Serial.println(msg);
-      
-      char msgBuffer[64];
-      msg.toCharArray(msgBuffer, sizeof(msgBuffer));
-      udp.beginPacket(pc1Ip, sendPort);
-      udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
-      udp.endPacket();
-      Serial.printf("Sending data: %s\n", msgBuffer);        }
+
+      sendMsg(msg);
+      }
 }
 
+// 모터 편차 조정 함수
 String motorDeviation(float error){
   int leftMotorLeast = 100, rightMotorLeast = 100;
   char weakMotor = 'A';
@@ -321,20 +315,15 @@ String motorDeviation(float error){
     Serial.println(yaw);
     float beforeYaw = yaw;
 
-    ledcWrite(motorAIn1, 0);
-    ledcWrite(motorAIn2, 0);
-    ledcWrite(motorBIn1, rightMotorLeast);
-    ledcWrite(motorBIn2, 0);  
+    driving(0, rightMotorLeast);
 
     timeout = millis() + delayLeastMotor;
     while (millis() < timeout) {
       yawAhrs();
     }
 
-    ledcWrite(motorAIn1, 0);
-    ledcWrite(motorAIn2, 0);
-    ledcWrite(motorBIn1, 0);
-    ledcWrite(motorBIn2, 0);
+    driving(0, 0);
+
     timeout = millis() + delayStop;
     while (millis() < timeout) {
       yawAhrs();
@@ -360,18 +349,12 @@ String motorDeviation(float error){
     Serial.println(yaw);
     float beforeYaw = yaw;
 
-    ledcWrite(motorAIn1, leftMotorLeast);
-    ledcWrite(motorAIn2, 0);
-    ledcWrite(motorBIn1, 0);
-    ledcWrite(motorBIn2, 0);  
+    driving(leftMotorLeast, 0);
     timeout = millis() + delayLeastMotor;
     while (millis() < timeout) {
       yawAhrs();
     }
-    ledcWrite(motorAIn1, 0);
-    ledcWrite(motorAIn2, 0);
-    ledcWrite(motorBIn1, 0);
-    ledcWrite(motorBIn2, 0);
+    driving(0, 0);
     timeout = millis() + delayStop;
     while (millis() < timeout) {
       yawAhrs();
@@ -381,7 +364,6 @@ String motorDeviation(float error){
     Serial.println(yaw);
     Serial.print("left: ");
     Serial.println(leftMotorLeast);
-
 
     yawAhrs();
     if((yaw) > ( beforeYaw * (1 + error)) || (yaw) < (beforeYaw * (1 - error))) break;
@@ -404,34 +386,22 @@ String motorDeviation(float error){
     Serial.print("yaw:");
     Serial.println(yaw);
 
-    ledcWrite(motorAIn1, leftMotorLeast);
-    ledcWrite(motorAIn2, 0);
-    ledcWrite(motorBIn1, rightMotorLeast);
-    ledcWrite(motorBIn2, 0);
+    driving(leftMotorLeast, rightMotorLeast);
     timeout = millis() + delayWeakMotor;
     while (millis() < timeout) {
       yawAhrs();
     }
-    ledcWrite(motorAIn1, 0);
-    ledcWrite(motorAIn2, 0);
-    ledcWrite(motorBIn1, 0);
-    ledcWrite(motorBIn2, 0);  
+    driving(0, 0);
     timeout = millis() + delayStop;
     while (millis() < timeout) {
       yawAhrs();
     }
-    ledcWrite(motorAIn1, 0);
-    ledcWrite(motorAIn2, leftMotorLeast);
-    ledcWrite(motorBIn1, 0);
-    ledcWrite(motorBIn2, rightMotorLeast);
+    driving(-leftMotorLeast, -rightMotorLeast);
     timeout = millis() + delayWeakMotor;
     while (millis() < timeout) {
       yawAhrs();
     }
-    ledcWrite(motorAIn1, 0);
-    ledcWrite(motorAIn2, 0);
-    ledcWrite(motorBIn1, 0);
-    ledcWrite(motorBIn2, 0);  
+    driving(0, 0);
     timeout = millis() + delayStop;
     while (millis() < timeout) {
       yawAhrs();
@@ -468,35 +438,23 @@ String motorDeviation(float error){
       Serial.println(varMotorA);
       Serial.print("right: ");
       Serial.println(rightMotorLeast);
-      
-      ledcWrite(motorAIn1, varMotorA);
-      ledcWrite(motorAIn2, 0);
-      ledcWrite(motorBIn1, rightMotorLeast);
-      ledcWrite(motorBIn2, 0);
+
+      driving(varMotorA, rightMotorLeast);
       timeout = millis() + delayStraightMotor;
       while (millis() < timeout) {
         yawAhrs();
       }
-      ledcWrite(motorAIn1, 0);
-      ledcWrite(motorAIn2, 0);
-      ledcWrite(motorBIn1, 0);
-      ledcWrite(motorBIn2, 0);
+      driving(0, 0);
       timeout = millis() + delayStraightMotor;
       while (millis() < timeout) {
         yawAhrs();
       }
-      ledcWrite(motorAIn1, 0);
-      ledcWrite(motorAIn2, varMotorA);
-      ledcWrite(motorBIn1, 0);
-      ledcWrite(motorBIn2, rightMotorLeast);
+      driving(-varMotorA, -rightMotorLeast);
       timeout = millis() + delayStraightMotor;
       while (millis() < timeout) {
         yawAhrs();
       }
-      ledcWrite(motorAIn1, 0);
-      ledcWrite(motorAIn2, 0);
-      ledcWrite(motorBIn1, 0);
-      ledcWrite(motorBIn2, 0);
+      driving(0, 0);
       timeout = millis() + delayStop;
       while (millis() < timeout) {
         yawAhrs();
@@ -527,34 +485,22 @@ String motorDeviation(float error){
       Serial.print("right: ");
       Serial.println(varMotorB);
 
-      ledcWrite(motorAIn1, leftMotorLeast);
-      ledcWrite(motorAIn2, 0);
-      ledcWrite(motorBIn1, varMotorB);
-      ledcWrite(motorBIn2, 0);
+      driving(leftMotorLeast, varMotorB);
       timeout = millis() + delayStraightMotor;
       while (millis() < timeout) {
         yawAhrs();
       }
-      ledcWrite(motorAIn1, 0);
-      ledcWrite(motorAIn2, 0);
-      ledcWrite(motorBIn1, 0);
-      ledcWrite(motorBIn2, 0);
+      driving(0, 0);
       timeout = millis() + delayStop;
       while (millis() < timeout) {
         yawAhrs();
       }
-      ledcWrite(motorAIn1, 0);
-      ledcWrite(motorAIn2, leftMotorLeast);
-      ledcWrite(motorBIn1, 0);
-      ledcWrite(motorBIn2, varMotorB);
+      driving(-leftMotorLeast, -varMotorB);
       timeout = millis() + delayStraightMotor;
       while (millis() < timeout) {
         yawAhrs();
       }
-      ledcWrite(motorAIn1, 0);
-      ledcWrite(motorAIn2, 0);
-      ledcWrite(motorBIn1, 0);
-      ledcWrite(motorBIn2, 0);
+      driving(0, 0);
       timeout = millis() + delayStop;
       while (millis() < timeout) {
         yawAhrs();
@@ -596,9 +542,33 @@ String motorDeviation(float error){
   return msg;
 }
 
+// 모터 작동 함수
+void driving(int leftMotorValue, int rightMotorValue){
+  // 왼쪽 모터 출력
+  if (leftMotorValue >= 0) {
+    ledcWrite(motorAIn1, leftMotorValue);
+    ledcWrite(motorAIn2, 0);
+  }
+  else {
+    ledcWrite(motorAIn1, 0);
+    ledcWrite(motorAIn2, -leftMotorValue);
+  } 
+
+  // 오른쪽 모터 출력
+  if (rightMotorValue >= 0) {
+    ledcWrite(motorBIn1, rightMotorValue);
+    ledcWrite(motorBIn2, 0);
+  }
+  else {
+    ledcWrite(motorBIn1, 0);
+    ledcWrite(motorBIn2, -rightMotorValue);
+  } 
+}
+
+//-------------------------------------실행---------------------------------------------------------//
+
 
 void setup() {
-
 
     Serial.begin(9600);
     ahrsSerial.begin(115200, SERIAL_8N1, 34, -1);
@@ -641,17 +611,13 @@ void setup() {
     ledcAttach(motorBIn1, freq, resolution);
     ledcAttach(motorBIn2, freq, resolution);
 
-    ledcWrite(motorAIn1, 0);
-    ledcWrite(motorAIn2, 0);
-    ledcWrite(motorBIn1, 0);
-    ledcWrite(motorBIn2, 0);
+    driving(0, 0);
 
     Wire.begin(i2cSda, i2cScl);
     if (!tcs.begin()) {
         Serial.println("No TCS34725 found ... check your connections");
         while (1);
     }
-    motorDeviation(0.2);
 }
 
 void loop() {
@@ -674,9 +640,7 @@ void loop() {
             Serial.println("connecting success:");
         } else if (aa == 0) {
             // data(startTime, motorAState, motorBState);
-            udp.beginPacket(pc1Ip, sendPort);
-            udp.write((const uint8_t*)packetBuffer, strlen(packetBuffer));
-            udp.endPacket();
+            sendMsg(packetBuffer);
         }
 
         if (aa == 1) {
@@ -684,36 +648,21 @@ void loop() {
             motorBState = motorB;
             if (strcmp(packetBuffer, "w") == 0) {
                 Serial.println("advance");
-                ledcWrite(motorAIn1, motorAState);
-                ledcWrite(motorAIn2, 0);
-                ledcWrite(motorBIn1, motorBState);
-                ledcWrite(motorBIn2, 0);
+                driving(motorAState, motorBState);
                 data(startTime, motorAState, motorBState);
             } else if (strcmp(packetBuffer, "a") == 0) {
-                motorBState = 200  ;
-                ledcWrite(motorAIn1, 0);
-                ledcWrite(motorAIn2, 0);
-                ledcWrite(motorBIn1, motorBState);
-                ledcWrite(motorBIn2, 0);
+                motorBState = 200;
+                driving(0, motorBState);
                 data(startTime, motorAState, motorBState);
             } else if (strcmp(packetBuffer, "d") == 0) {
                 motorAState = 200;
-                ledcWrite(motorAIn1, motorAState);
-                ledcWrite(motorAIn2, 0);
-                ledcWrite(motorBIn1, 0);
-                ledcWrite(motorBIn2, 0);
+                driving(motorAState, 0);
                 data(startTime, motorAState, motorBState);
             } else if (strcmp(packetBuffer, "s") == 0) {
-                ledcWrite(motorAIn1, 0);
-                ledcWrite(motorAIn2, motorAState);
-                ledcWrite(motorBIn1, 0);
-                ledcWrite(motorBIn2, motorBState);
+                driving(-motorAState, -motorBState);
                 data(startTime, motorAState, motorBState);
             } else if (strcmp(packetBuffer, "i") == 0) {
-                ledcWrite(motorAIn1, 0);
-                ledcWrite(motorAIn2, 0);
-                ledcWrite(motorBIn1, 0);
-                ledcWrite(motorBIn2, 0);
+                driving(0, 0);
                 data(startTime, motorAState, motorBState);
                 
             } else if (strcmp(packetBuffer, "[colorAdjust]") == 0){
@@ -721,59 +670,30 @@ void loop() {
             } else if (strcmp(packetBuffer, "ahrs") == 0) {
                 yawAhrs();
                 String msg = "[ahrs]" + String(yaw, 2);
-                char msgBuffer[64];
-                msg.toCharArray(msgBuffer, sizeof(msgBuffer));
-                udp.beginPacket(pc1Ip, sendPort);
-                udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
-                udp.endPacket();
-                Serial.printf("Sending data: %s\n", msgBuffer);
-
+                sendMsg(msg);
             } else if (strcmp(packetBuffer, "color") == 0) {
                 tcs.getRawData(&currentR, &currentG, &currentB, &currentC);
                 currentLux = tcs.calculateLux(currentR, currentG, currentB);
                 String msg = "[color]" + String(currentLux) + "," + String(currentR) + "," + String(currentG) + "," + String(currentB);
-                char msgBuffer[64];
-                msg.toCharArray(msgBuffer, sizeof(msgBuffer));
-                udp.beginPacket(pc1Ip, sendPort);
-                udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
-                udp.endPacket();
-                Serial.printf("Sending data: %s\n", msgBuffer);
+                sendMsg(msg);
             } else if(strcmp(packetBuffer, "stop") == 0) {
-                ledcWrite(motorAIn1, 0);
-                ledcWrite(motorAIn2, 0);
-                ledcWrite(motorBIn1, 0);
-                ledcWrite(motorBIn2, 0);  
+                driving(0, 0);
                 Serial.println("stop!!!!!!!!!!!!!!!!!!!");
                 delay(5000);   
             } else if(strcmp(packetBuffer, "[die]") == 0) {
-                ledcWrite(motorAIn1, 0);
-                ledcWrite(motorAIn2, 0);
-                ledcWrite(motorBIn1, 0);
-                ledcWrite(motorBIn2, 0);     
-                delay(10000000);
+                driving(0, 0);
+                delay(1000);
             } else if(strcmp(packetBuffer, "[name]") == 0) {
               tcs.getRawData(&currentR, &currentG, &currentB, &currentC);
               currentLux = tcs.calculateLux(currentR, currentG, currentB);
               currentColorName = colorDefine(currentLux, currentR, currentG, currentB, tuningSize);
-              Serial.println(currentColorName);
-              char msgBuffer[64];
-              currentColorName.toCharArray(msgBuffer, sizeof(msgBuffer));
-              udp.beginPacket(pc1Ip, sendPort);
-              udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
-              udp.endPacket();
-              Serial.printf("[name] Sending data : %s\n", msgBuffer);    
+              sendMsg(currentColorName);
             } else if(strcmp(packetBuffer,  "=") == 0){
               motorDeviation(0.2);
             }
             if(cc>0 && cc<30){
                   String msg = "[save]";
-                  char msgBuffer[512];
-                  msg.toCharArray(msgBuffer, sizeof(msgBuffer));
-
-                  udp.beginPacket(pc1Ip, sendPort);
-                  udp.write((const uint8_t*)msgBuffer, strlen(msgBuffer));
-                  udp.endPacket();
-                  Serial.printf("Sending data: %s\n", msgBuffer);
+                  sendMsg(msg);
             }
     
  
