@@ -135,6 +135,7 @@ void yawAhrs(){
 
   yaw = parsedYaw + 180;
   yawDiff = startYaw - yaw;
+  sendMsg("yaw: "+String(yaw));
 }
 
 // 데이터 문자열 생성 함수
@@ -301,10 +302,37 @@ String motorDeviation(float error){
 
   yawAhrs();
 
+  // while (1){
+  //   if (yaw > 150){
+  //     if (yaw <200) {
+  //       break;
+  //     }
+  //     driving(250, 0);
+  //     delay(500);
+  //     driving(0, 0);
+  //   }
+  //   else{
+  //     driving(0, 250);
+  //     delay(500);
+  //     driving(0, 0);
+  //   }
+  //   delay(500);
+  //   yawAhrs();
+  //   delay(500);
+  //   yawAhrs();
+  // }
+
+  // while (millis() < 5000) {
+  //   yawAhrs();
+  // }
+
   // 모터 최소 작동값 찾기
   // 오른쪽 모터
   Serial.println("[Finding least value]");
   Serial.println("right motor finding!");
+  sendMsg("[Finding least value]");
+  sendMsg("right motor finding!");
+  yawAhrs();
   while (1){
     Serial.print("yaw:");
     Serial.println(yaw);
@@ -330,7 +358,7 @@ String motorDeviation(float error){
     Serial.println(rightMotorLeast);
 
     yawAhrs();
-    if((yaw > beforeYaw * (1 + error) || yaw < beforeYaw * (1 - error))) {
+    if((yaw > beforeYaw + error || yaw < beforeYaw  - error)) {
       driving(0, -rightMotorLeast);
 
       timeout = millis() + delayLeastMotor;
@@ -354,6 +382,7 @@ String motorDeviation(float error){
   }
   // 왼쪽 모터
   Serial.println("left motor finding!");
+  sendMsg("left motor finding!");
   while (1){
     Serial.print("yaw:");
     Serial.println(yaw);
@@ -376,7 +405,7 @@ String motorDeviation(float error){
     Serial.println(leftMotorLeast);
 
     yawAhrs();
-    if((yaw) > ( beforeYaw * (1 + error)) || (yaw) < (beforeYaw * (1 - error))){
+    if((yaw) > ( beforeYaw + error) || (yaw) < (beforeYaw - error)){
       driving(-leftMotorLeast, 0);
       timeout = millis() + delayLeastMotor;
       while (millis() < timeout) {
@@ -403,6 +432,7 @@ String motorDeviation(float error){
   Serial.println(yaw);
   // 약한 모터 찾기
   Serial.println("weak motor finding!");
+  sendMsg("weak motor finding!");
   if (1){
     float beforeYaw = yaw;
     Serial.print("yaw:");
@@ -442,6 +472,7 @@ String motorDeviation(float error){
   }
 
   Serial.println("motor straight finding!");
+  sendMsg("motor straight finding!");
   // 모터 직선 값 찾기
   int varMotorA = 0;
   int varMotorB = 0;
@@ -549,31 +580,39 @@ String motorDeviation(float error){
       rightMotorStraight = varMotorB;
   }
 
-  // 20cm 거리 도달 시간 측정
-  unsigned long arrivalTime;
-  String pointColor = "mdf";
+  // // 20cm 거리 도달 시간 측정
+  // Serial.println("during time measuring!");
+  // unsigned long arrivalTime;
+  // String pointColor = "mdf";
 
-  delay(delayDistance);
+  // delay(delayDistance);
 
-  while (1){
-    if (currentColorName == pointColor) break;
-  }
-  unsigned long startTime = millis();
+  // while (1){
+  //   if (currentColorName == pointColor) break;
+  // }
+  // unsigned long startTime = millis();
 
-  driving(leftMotorStraight, rightMotorStraight);
-  delay(delayDistance);
-  while(currentColorName != pointColor){
-    // 색상 업데이트
-    colorName();
-  }
-  unsigned long actionTime = millis() - startTime;
+  // driving(leftMotorStraight, rightMotorStraight);
+  // delay(delayDistance);
+  // while(currentColorName != pointColor){
+  //   // 색상 업데이트
+  //   colorName();
+  // }
+  // unsigned long actionTime = millis() - startTime;
 
-  delay(delayDistance);
-  driving(-leftMotorStraight, -rightMotorStraight);
-  delay(actionTime);
+  // delay(delayDistance);
+  // driving(-leftMotorStraight, -rightMotorStraight);
+  // delay(actionTime);
+
+  // test value
+  unsigned long actionTime = 0;
 
   String msg = "[motorDeviation]|" + String(leftMotorLeast) + "|" + String(rightMotorLeast) + "|" +
                 String(leftMotorStraight) + "|" + String(rightMotorStraight) + "|" + String(actionTime);
+
+  motorA = leftMotorStraight;
+  motorB = rightMotorStraight;
+  sendMsg("over calibration!");
   return msg;
 }
 
@@ -662,6 +701,7 @@ void loop() {
     
     if (packetSize) {
         // colorName();
+        yawAhrs();
 
         udp.read(packetBuffer, 255);
         packetBuffer[packetSize] = '\0';
@@ -686,11 +726,9 @@ void loop() {
                 driving(motorAState, motorBState);
                 sendMsg(data(startTime, motorAState, motorBState));
             } else if (strcmp(packetBuffer, "a") == 0) {
-                motorBState = 200;
                 driving(0, motorBState);
                 sendMsg(data(startTime, motorAState, motorBState));
             } else if (strcmp(packetBuffer, "d") == 0) {
-                motorAState = 200;
                 driving(motorAState, 0);
                 sendMsg(data(startTime, motorAState, motorBState));
             } else if (strcmp(packetBuffer, "s") == 0) {
@@ -724,7 +762,7 @@ void loop() {
               currentColorName = colorDefine(currentLux, currentR, currentG, currentB, tuningSize);
               sendMsg(currentColorName);
             } else if(strcmp(packetBuffer,  "=") == 0){
-              motorDeviation(0.2);
+              motorDeviation(5);
             }
             if(cc>0 && cc<30){
                   String msg = "[save]";
