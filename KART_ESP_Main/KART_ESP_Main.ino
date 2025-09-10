@@ -298,7 +298,6 @@ String motorDeviation(float error, int transmit = 1){
   int leftMotorLeast = 100, rightMotorLeast = 100;
   int leftMotorStraight = 0, rightMotorStraight = 0;
   char weakMotor = 'A';
-  unsigned long timeout;
   unsigned long delayLeastMotor = 3000, delayWeakMotor = 5000, delayStraightMotor = 3000, delayDistance = 2000 ,delayStop = 500;
   String head = "[motorDeviation]";
 
@@ -389,6 +388,23 @@ String motorDeviation(float error, int transmit = 1){
     }
     leftMotorLeast += 10;
   }
+  // 180도 부근으로 방향 보정
+  yawAhrs();
+  while(yaw < 170 || yaw > 190){
+    while(yaw < 170){
+      driving(leftMotorLeast, -rightMotorLeast);
+      yawAhrs();
+    }
+    driving(0, 0);
+    delay(delayStop);
+    while(yaw > 190){
+      driving(-leftMotorLeast, rightMotorLeast);
+      yawAhrs();
+    }
+    driving(0, 0);
+    delay(delayStop);
+  }
+
   // 약한 모터 찾기
   Serial.println("weak motor finding!");
   if(transmit) sendMsg(head + "weak motor finding!");
@@ -418,10 +434,26 @@ String motorDeviation(float error, int transmit = 1){
     if(transmit) sendMsg(head + "weakMotor = " + weakMotor);
   }
 
+  // 180도 부근으로 방향 보정
+  yawAhrs();
+  while(yaw < 170 || yaw > 190){
+    while(yaw < 170){
+      driving(leftMotorLeast, -rightMotorLeast);
+      yawAhrs();
+    }
+    driving(0, 0);
+    delay(delayStop);
+    while(yaw > 190){
+      driving(-leftMotorLeast, rightMotorLeast);
+      yawAhrs();
+    }
+    driving(0, 0);
+    delay(delayStop);
+  }
 
-  Serial.println("motor straight finding!");
-  sendMsg("motor straight finding!");
   // 모터 직선 값 찾기
+  Serial.println("motor straight finding!");
+  if(transmit) sendMsg(head + "motor straight finding!");
   int varMotorA = 0;
   int varMotorB = 0;
   
