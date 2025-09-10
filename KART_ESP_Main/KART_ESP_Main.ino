@@ -428,7 +428,7 @@ String motorDeviation(float error, int transmit = 1){
     Serial.println(yaw);
 
     if (yaw > beforeYaw) weakMotor = 'B';
-    else weakMotor = 'B';
+    else weakMotor = 'A';
   
     Serial.printf("weakMotor = %c\n",weakMotor);
     if(transmit) sendMsg(head + "weakMotor = " + weakMotor);
@@ -482,18 +482,11 @@ String motorDeviation(float error, int transmit = 1){
       delay(delayStop);
 
       yawAhrs();
-      if (abs(yaw - beforeYaw) >400){
-        if (yaw > 0){ 
-          varMotorA -= 5;
-          break;
-        }
+      if (yaw > beforeYaw){
+        varMotorA -= 5;
+        break;
       }
-      else{
-        if (yaw < beforeYaw){
-          varMotorA -= 5;
-          break;
-        }
-      }
+
       varMotorA += 10;
       }
       leftMotorStraight = varMotorA;
@@ -518,17 +511,9 @@ String motorDeviation(float error, int transmit = 1){
       delay(delayStop);      
 
       yawAhrs();
-      if (abs(yaw - beforeYaw) > 200){
-        if (yaw > 0){ 
-          varMotorB -= 5;
-          break;
-        }
-      }
-      else{
-        if (yaw < beforeYaw){
-          varMotorB -= 5;
-          break;
-        }
+      if (yaw < beforeYaw){
+        varMotorB -= 5;
+        break;
       }
       varMotorB += 10;
       }
