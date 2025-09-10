@@ -294,45 +294,29 @@ void colorName(){
 }
 
 // 모터 편차 조정 함수
-String motorDeviation(float error){
+String motorDeviation(float error, int transmit = 1){
   int leftMotorLeast = 100, rightMotorLeast = 100;
   int leftMotorStraight = 0, rightMotorStraight = 0;
   char weakMotor = 'A';
   unsigned long timeout;
   unsigned long delayLeastMotor = 3000, delayWeakMotor = 5000, delayStraightMotor = 3000, delayDistance = 2000 ,delayStop = 500;
+  String head = "[motorDeviation]";
 
+  while (yaw == 0) {
+  yawAhrs();
+  Serial.println("yaw value renewal");
+  if (transmit) sendMsg(head + "yaw value renewal");
+  }
+
+  delay(delayStop);
   yawAhrs();
 
-  // while (1){
-  //   if (yaw > 150){
-  //     if (yaw <200) {
-  //       break;
-  //     }
-  //     driving(250, 0);
-  //     delay(500);
-  //     driving(0, 0);
-  //   }
-  //   else{
-  //     driving(0, 250);
-  //     delay(500);
-  //     driving(0, 0);
-  //   }
-  //   delay(500);
-  //   yawAhrs();
-  //   delay(500);
-  //   yawAhrs();
-  // }
-
-  // while (millis() < 5000) {
-  //   yawAhrs();
-  // }
-
   // 모터 최소 작동값 찾기
-  // 오른쪽 모터
   Serial.println("[Finding least value]");
   Serial.println("right motor finding!");
-  sendMsg("[Finding least value]");
-  sendMsg("right motor finding!");
+  if (transmit) sendMsg(head + "[Finding least value]");
+  if (transmit) sendMsg(head + "right motor finding!");
+  // 오른쪽 모터
   yawAhrs();
   while (1){
     Serial.print("yaw:");
@@ -341,65 +325,49 @@ String motorDeviation(float error){
 
     driving(0, rightMotorLeast);
 
-    timeout = millis() + delayLeastMotor;
-    while (millis() < timeout) {
-      yawAhrs();
-    }
+    delay(delayLeastMotor);
 
     driving(0, 0);
 
-    timeout = millis() + delayStop;
-    while (millis() < timeout) {
-      yawAhrs();
-    }
+    delay(delayStop);
 
+    yawAhrs();
     Serial.print("yaw:");
     Serial.println(yaw);
     Serial.print("right: ");
     Serial.println(rightMotorLeast);
 
-    yawAhrs();
     if((yaw > beforeYaw + error || yaw < beforeYaw  - error)) {
       driving(0, -rightMotorLeast);
-
-      timeout = millis() + delayLeastMotor;
-      while (millis() < timeout) {
-        yawAhrs();
-      }
-
+      delay(delayLeastMotor);
       driving(0, 0);
-
-      timeout = millis() + delayStop;
-      while (millis() < timeout) {
-        yawAhrs();
-      }
+      delay(delayStop);
       break;
     }
+
     if(rightMotorLeast > 255){
       rightMotorLeast = 0;
+      Serial.println("Broken RightMotor");
+      if (transmit) sendMsg(head + "Broken RightMotor");
       break;
     }
     rightMotorLeast += 10;
   }
   // 왼쪽 모터
   Serial.println("left motor finding!");
-  sendMsg("left motor finding!");
+  if (transmit) sendMsg(head + "left motor finding!");
   while (1){
+    yawAhrs();
     Serial.print("yaw:");
     Serial.println(yaw);
     float beforeYaw = yaw;
 
     driving(leftMotorLeast, 0);
-    timeout = millis() + delayLeastMotor;
-    while (millis() < timeout) {
-      yawAhrs();
-    }
+    delay(delayLeastMotor);
     driving(0, 0);
-    timeout = millis() + delayStop;
-    while (millis() < timeout) {
-      yawAhrs();
-    }
-
+    delay(delayStop);
+    
+    yawAhrs();
     Serial.print("yaw:");
     Serial.println(yaw);
     Serial.print("left: ");
@@ -408,69 +376,48 @@ String motorDeviation(float error){
     yawAhrs();
     if((yaw) > ( beforeYaw + error) || (yaw) < (beforeYaw - error)){
       driving(-leftMotorLeast, 0);
-      timeout = millis() + delayLeastMotor;
-      while (millis() < timeout) {
-        yawAhrs();
-      }
+      delay(delayLeastMotor);
       driving(0, 0);
-      timeout = millis() + delayStop;
-      while (millis() < timeout) {
-        yawAhrs();
-      }
+      delay(delayStop);
       break;
     }
     if(leftMotorLeast > 255){
       leftMotorLeast = 0;
+      Serial.println("Broken LeftMotor");
+      if (transmit) sendMsg(head + "Broken LeftMotor");
       break;
     }
-
     leftMotorLeast += 10;
   }
-  rightMotorLeast += 10;
-  leftMotorLeast += 10;
-
-  Serial.print("yaw:");
-  Serial.println(yaw);
   // 약한 모터 찾기
   Serial.println("weak motor finding!");
-  sendMsg("weak motor finding!");
+  if(transmit) sendMsg(head + "weak motor finding!");
   if (1){
+    yawAhrs();
     float beforeYaw = yaw;
     Serial.print("yaw:");
     Serial.println(yaw);
 
     driving(leftMotorLeast, rightMotorLeast);
-    timeout = millis() + delayWeakMotor;
-    while (millis() < timeout) {
-      yawAhrs();
-    }
+    delay(delayWeakMotor);
     driving(0, 0);
-    timeout = millis() + delayStop;
-    while (millis() < timeout) {
-      yawAhrs();
-    }
+    delay(delayStop);
     driving(-leftMotorLeast, -rightMotorLeast);
-    timeout = millis() + delayWeakMotor;
-    while (millis() < timeout) {
-      yawAhrs();
-    }
+    delay(delayWeakMotor);
     driving(0, 0);
-    timeout = millis() + delayStop;
-    while (millis() < timeout) {
-      yawAhrs();
-    }
+    delay(delayStop);
+
+    yawAhrs();
     Serial.print("yaw:");
     Serial.println(yaw);
-    yawAhrs();
-  if (abs(yaw + beforeYaw) > 360){
-    if (yaw > 0) weakMotor = 'B';
-    else weakMotor = 'A';
-  }
-  else{
-    if (yaw > beforeYaw) weakMotor = 'A';
+
+    if (yaw > beforeYaw) weakMotor = 'B';
     else weakMotor = 'B';
+  
+    Serial.printf("weakMotor = %c\n",weakMotor);
+    if(transmit) sendMsg(head + "weakMotor = " + weakMotor);
   }
-  }
+
 
   Serial.println("motor straight finding!");
   sendMsg("motor straight finding!");
@@ -494,25 +441,13 @@ String motorDeviation(float error){
       Serial.println(rightMotorLeast);
 
       driving(varMotorA, rightMotorLeast);
-      timeout = millis() + delayStraightMotor;
-      while (millis() < timeout) {
-        yawAhrs();
-      }
+      delay(delayStraightMotor);
       driving(0, 0);
-      timeout = millis() + delayStraightMotor;
-      while (millis() < timeout) {
-        yawAhrs();
-      }
+      delay(delayStop);
       driving(-varMotorA, -rightMotorLeast);
-      timeout = millis() + delayStraightMotor;
-      while (millis() < timeout) {
-        yawAhrs();
-      }
+      delay(delayStraightMotor);
       driving(0, 0);
-      timeout = millis() + delayStop;
-      while (millis() < timeout) {
-        yawAhrs();
-      }
+      delay(delayStop);
 
       yawAhrs();
       if (abs(yaw - beforeYaw) >400){
@@ -542,26 +477,14 @@ String motorDeviation(float error){
       Serial.println(varMotorB);
 
       driving(leftMotorLeast, varMotorB);
-      timeout = millis() + delayStraightMotor;
-      while (millis() < timeout) {
-        yawAhrs();
-      }
+      delay(delayStraightMotor);
       driving(0, 0);
-      timeout = millis() + delayStop;
-      while (millis() < timeout) {
-        yawAhrs();
-      }
+      delay(delayStop);
       driving(-leftMotorLeast, -varMotorB);
-      timeout = millis() + delayStraightMotor;
-      while (millis() < timeout) {
-        yawAhrs();
-      }
+      delay(delayStraightMotor);
       driving(0, 0);
-      timeout = millis() + delayStop;
-      while (millis() < timeout) {
-        yawAhrs();
-      }
-      
+      delay(delayStop);      
+
       yawAhrs();
       if (abs(yaw - beforeYaw) > 200){
         if (yaw > 0){ 
