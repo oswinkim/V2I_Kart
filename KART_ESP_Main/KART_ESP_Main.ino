@@ -109,32 +109,33 @@ String colorDefine(uint16_t lux, uint16_t r, uint16_t g, uint16_t b,  int tuning
 // yaw값 업데이트 함수
 void yawAhrs(){
   // 최신 AHRS 한 줄 수신
-  String latestLine = "";
+  String latestLine1 = "";
+  String latestLine2 = "";
   currentTime = millis();
-  unsigned long timeout = millis() + 100;
-  while (millis() < timeout) {
-      if (ahrsSerial.available()) {
-          char c = ahrsSerial.read();
-          if (c == '\n') break;
-          else latestLine += c;
-      }
+
+  while (ahrsSerial.available()) {
+    char c = ahrsSerial.read();
+    if (c == '\n') {
+      latestLine2 = latestLine1;
+      latestLine1 = "";
+    }
+    else latestLine1 += c;
   }
   
   // yaw 추출
   float parsedYaw = yaw;
-  if (latestLine.startsWith("$EUL")) {
-      int firstComma  = latestLine.indexOf(',');
-      int secondComma = latestLine.indexOf(',', firstComma + 1);
-      int thirdComma  = latestLine.indexOf(',', secondComma + 1);
+  if (latestLine2.startsWith("$EUL")) {
+    int firstComma  = latestLine2.indexOf(',');
+    int secondComma = latestLine2.indexOf(',', firstComma + 1);
+    int thirdComma  = latestLine2.indexOf(',', secondComma + 1);
 
-      if (firstComma != -1 && secondComma != -1 && thirdComma != -1) {
-          String yawStr = latestLine.substring(thirdComma + 1);
-          parsedYaw = yawStr.toFloat();
+    if (firstComma != -1 && secondComma != -1 && thirdComma != -1) {
+      String yawStr = latestLine2.substring(thirdComma + 1);
+      parsedYaw = yawStr.toFloat();
+      yaw = parsedYaw + 180;
       }
+    yawDiff = startYaw - yaw;
   }
-
-  yaw = parsedYaw + 180;
-  yawDiff = startYaw - yaw;
   sendMsg("yaw: "+String(yaw));
 }
 
