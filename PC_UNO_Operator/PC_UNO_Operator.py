@@ -461,6 +461,9 @@ def Kart2Player(U,msg):
         #같음
         U.drivingRecord.append(histo)
 
+    else:
+        print(f"recived data: {msg}")
+
     if msg in colorAll:
 
         # print(f"{U.userName}의 color:{msg}")
@@ -664,8 +667,8 @@ Dao = User(
 
 Bazzi = User(
         userName = "빨강",
-        nameKart = "빨강색카트", ipKart = "192.168.3.197", sendPortKart = "7000", revPortKart = "7001",
-        namePlayer = "배찌", ipPlayer = "192.168.3.187", sendPortPlayer = "8000", revPortPlayer = "8000",
+        nameKart = "파랑색카트", ipKart = "192.168.3.11", sendPortKart = "7000", revPortKart = "7001",
+        namePlayer = "배찌", ipPlayer = "192.168.3.14", sendPortPlayer = "8000", revPortPlayer = "8000",
         role="rat"
     )
 
