@@ -667,7 +667,7 @@ Dao = User(
 
 Bazzi = User(
         userName = "빨강",
-        nameKart = "파랑색카트", ipKart = "192.168.3.11", sendPortKart = "7000", revPortKart = "7001",
+        nameKart = "파랑색카트", ipKart = "192.168.3.174", sendPortKart = "7000", revPortKart = "7001",
         namePlayer = "배찌", ipPlayer = "192.168.3.14", sendPortPlayer = "8000", revPortPlayer = "8000",
         role="rat"
     )
@@ -717,7 +717,9 @@ while 1:
     for j in ratList:
         print(f"{j.userName}의 목표:{j.goal}")
     print("이게 맞습니까?")
-    a = (input(f"맞다면 1 아니라면 0: "))
+    a="1"
+    # a = (input(f"맞다면 1 아니라면 0: "))
+
 
 # for i in userList:
 #     print("user의 Kart 색상 보정")

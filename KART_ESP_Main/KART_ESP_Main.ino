@@ -298,7 +298,7 @@ String motorDeviation(float error, int transmit = 1){
   int leftMotorLeast = 100, rightMotorLeast = 100;
   int leftMotorStraight = 0, rightMotorStraight = 0;
   char weakMotor = 'A';
-  unsigned long delayLeastMotor = 3000, delayWeakMotor = 5000, delayStraightMotor = 3000, delayDistance = 2000 ,delayStop = 500;
+  unsigned long delayLeastMotor = 1500, delayWeakMotor = 3000, delayStraightMotor = 3000, delayDistance = 2000 ,delayStop = 500;
   String head = "[motorDeviation]";
 
   while (yaw == 0) {
@@ -307,8 +307,28 @@ String motorDeviation(float error, int transmit = 1){
   if (transmit) sendMsg(head + "yaw value renewal");
   }
 
+  // // 180도 부근으로 방향 보정
+  // Serial.println("locating");
+  // if (transmit) sendMsg(head + "locating");
+  // if (transmit) sendMsg(head + "yaw" + String(yaw));
+  // yawAhrs();
+  // while(yaw < 170 || yaw > 190){
+  //   while(yaw < 170){
+  //     driving(200, -200);
+  //     yawAhrs();
+  //   }
+  //   driving(0, 0);
+  //   delay(delayStop);
+  //   while(yaw > 190){
+  //     driving(-200, 200);
+  //     yawAhrs();
+  //   }
+  //   driving(0, 0);
+  //   delay(delayStop);
+  //   yawAhrs();
+  // }
+  driving(0, 0);
   delay(delayStop);
-  yawAhrs();
 
   // 모터 최소 작동값 찾기
   Serial.println("[Finding least value]");
@@ -329,13 +349,13 @@ String motorDeviation(float error, int transmit = 1){
     driving(0, 0);
 
     delay(delayStop);
-
+    yawAhrs();
     yawAhrs();
     Serial.print("yaw:");
     Serial.println(yaw);
     Serial.print("right: ");
     Serial.println(rightMotorLeast);
-
+    yawAhrs();
     if((yaw > beforeYaw + error || yaw < beforeYaw  - error)) {
       driving(0, -rightMotorLeast);
       delay(delayLeastMotor);
@@ -350,12 +370,13 @@ String motorDeviation(float error, int transmit = 1){
       if (transmit) sendMsg(head + "Broken RightMotor");
       break;
     }
-    rightMotorLeast += 10;
+    rightMotorLeast += 10;  
   }
   // 왼쪽 모터
   Serial.println("left motor finding!");
   if (transmit) sendMsg(head + "left motor finding!");
   while (1){
+    yawAhrs();
     yawAhrs();
     Serial.print("yaw:");
     Serial.println(yaw);
@@ -371,7 +392,7 @@ String motorDeviation(float error, int transmit = 1){
     Serial.println(yaw);
     Serial.print("left: ");
     Serial.println(leftMotorLeast);
-
+    yawAhrs();
     yawAhrs();
     if((yaw) > ( beforeYaw + error) || (yaw) < (beforeYaw - error)){
       driving(-leftMotorLeast, 0);
@@ -388,7 +409,13 @@ String motorDeviation(float error, int transmit = 1){
     }
     leftMotorLeast += 10;
   }
+  rightMotorLeast += 30;
+  leftMotorLeast += 30;
+
   // 180도 부근으로 방향 보정
+  Serial.println("locating");
+  if (transmit) sendMsg(head + "locating");
+  if (transmit) sendMsg(head + "yaw" + String(yaw));
   yawAhrs();
   while(yaw < 170 || yaw > 190){
     while(yaw < 170){
@@ -434,7 +461,11 @@ String motorDeviation(float error, int transmit = 1){
     if(transmit) sendMsg(head + "weakMotor = " + weakMotor);
   }
 
+
   // 180도 부근으로 방향 보정
+  Serial.println("locating");
+  if (transmit) sendMsg(head + "locating");
+  if (transmit) sendMsg(head + "yaw" + String(yaw));
   yawAhrs();
   while(yaw < 170 || yaw > 190){
     while(yaw < 170){
@@ -466,6 +497,8 @@ String motorDeviation(float error, int transmit = 1){
   if (weakMotor == 'A'){
     varMotorA = leftMotorLeast;
     while (1){
+      yawAhrs();
+      yawAhrs();
       float beforeYaw = yaw;
       Serial.print("left: ");
       Serial.println(varMotorA);
@@ -476,16 +509,17 @@ String motorDeviation(float error, int transmit = 1){
       delay(delayStraightMotor);
       driving(0, 0);
       delay(delayStop);
-      driving(-varMotorA, -rightMotorLeast);
-      delay(delayStraightMotor);
-      driving(0, 0);
-      delay(delayStop);
 
+      yawAhrs();
       yawAhrs();
       if (yaw > beforeYaw){
         varMotorA -= 5;
         break;
       }
+      driving(-varMotorA, -rightMotorLeast);
+      delay(delayStraightMotor);
+      driving(0, 0);
+      delay(delayStop);
 
       varMotorA += 10;
       }
@@ -495,6 +529,8 @@ String motorDeviation(float error, int transmit = 1){
   else{
     varMotorB = rightMotorLeast;
     while (1){
+      yawAhrs();
+      yawAhrs();
       float beforeYaw = yaw;
       Serial.print("left: ");
       Serial.println(leftMotorLeast);
@@ -505,16 +541,18 @@ String motorDeviation(float error, int transmit = 1){
       delay(delayStraightMotor);
       driving(0, 0);
       delay(delayStop);
-      driving(-leftMotorLeast, -varMotorB);
-      delay(delayStraightMotor);
-      driving(0, 0);
-      delay(delayStop);      
-
+   
+      yawAhrs();
       yawAhrs();
       if (yaw < beforeYaw){
         varMotorB -= 5;
         break;
       }
+      driving(-leftMotorLeast, -varMotorB);
+      delay(delayStraightMotor);
+      driving(0, 0);
+      delay(delayStop);   
+
       varMotorB += 10;
       }
       leftMotorStraight = leftMotorLeast;
@@ -581,7 +619,6 @@ void driving(int leftMotorValue, int rightMotorValue){
 }
 
 //-------------------------------------실행---------------------------------------------------------//
-
 
 void setup() {
 
@@ -703,7 +740,7 @@ void loop() {
               currentColorName = colorDefine(currentLux, currentR, currentG, currentB, tuningSize);
               sendMsg(currentColorName);
             } else if(strcmp(packetBuffer,  "=") == 0){
-              motorDeviation(5);
+              motorDeviation(60);
             }
             if(cc>0 && cc<30){
                   String msg = "[save]";
