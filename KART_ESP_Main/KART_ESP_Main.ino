@@ -790,6 +790,15 @@ void loop() {
  
 
         }
+
+        if (strcmp(packetBuffer, "i") == 0) {
+          isReplaying = false;
+          driving(0, 0);
+          Serial.println("강제정지");
+        } else if (strcmp(packetBuffer, "[replay]") == 0) {
+            replayLogSave(packetBuffer);
+        }
+
     }
     // if(aa==1){
     //   colorName();
