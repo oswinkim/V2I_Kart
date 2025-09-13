@@ -657,6 +657,27 @@ void replayLogSave(char packetBuffer[255]) {
   currentCommandIndex = 0;
   lastCommandTime = millis();
 }
+
+void pathReproduction(){
+    //  현재 인덱스가 유효하다면
+    if (currentCommandIndex < commandCount) {
+      ReplayCommand currentCommand = commands[currentCommandIndex];
+      // 시간차 계산
+      if (millis() - lastCommandTime >= currentCommand.delayMs) {
+        Serial.printf("현재명령(%d): 대기=%lu, 좌=%d, 우=%d\n",
+                      currentCommandIndex, currentCommand.delayMs, currentCommand.leftMotor, currentCommand.rightMotor);
+        // 모터 업데이트
+        driving(currentCommand.leftMotor, currentCommand.rightMotor);
+        // 인덱스 업데이트
+        lastCommandTime = millis();
+        currentCommandIndex++;
+      }
+    } else {
+      isReplaying = false;
+      driving(0, 0);
+      Serial.println("모든 명령 실행 완료");
+    }
+}
 //-------------------------------------실행---------------------------------------------------------//
 
 
@@ -803,4 +824,8 @@ void loop() {
     // if(aa==1){
     //   colorName();
     // }
+
+    if (isReplaying) {
+      pathReproduction()
+    }
 }
