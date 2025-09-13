@@ -826,6 +826,6 @@ void loop() {
     // }
 
     if (isReplaying) {
-      pathReproduction()
+      pathReproduction();
     }
 }
