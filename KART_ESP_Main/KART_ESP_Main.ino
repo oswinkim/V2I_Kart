@@ -72,6 +72,21 @@ Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_154MS, TCS347
 unsigned long startTime = 0;
 unsigned long currentTime = 0;
 
+// 리플레이 로그 저장
+struct ReplayCommand {
+  unsigned long delayMs;  // 첫 번째 값: 시간 간격 (ms)
+  int leftMotor;          // 두 번째 값: 좌측 모터 (int16)
+  int rightMotor;         // 세 번째 값: 우측 모터 (int16)
+  float logValue;         // 네 번째 값: 로깅 값 (float)
+};
+// 로그 저장 배열 (최대 100)
+#define MAX_COMMANDS 100
+ReplayCommand commands[MAX_COMMANDS];
+int commandCount = 0;
+// 상태 변수
+bool isReplaying = false;
+int currentCommandIndex = 0;
+unsigned long lastCommandTime = 0;
 //-------------------------------------함수---------------------------------------------------------//
 
 // 메시지 전송 함수
@@ -580,6 +595,68 @@ void driving(int leftMotorValue, int rightMotorValue){
   } 
 }
 
+void replayLogSave(char packetBuffer[255]) {
+  String receivedString(packetBuffer);
+
+  // 포맷으로 시작하는지
+  if (!receivedString.startsWith("[replay]")) {
+    Serial.println("알 수 없는 포맷");
+    return;
+  }
+  // [포맷] 접두사 제거
+  String dataString = receivedString.substring(receivedString.indexOf("[replay]") + 8);
+
+  // |로 행 분리
+  int rowStartIndex = 0;
+  int rowEndIndex = dataString.indexOf('|');
+  commandCount = 0;
+
+  while (rowEndIndex != -1 && commandCount < MAX_COMMANDS) {
+    String rowString = dataString.substring(rowStartIndex, rowEndIndex);
+    // ,로 열 분리
+    int commaIndex1 = rowString.indexOf(',');
+    int commaIndex2 = rowString.indexOf(',', commaIndex1 + 1);
+    int commaIndex3 = rowString.indexOf(',', commaIndex2 + 1);
+
+    if (commaIndex1 != -1 && commaIndex2 != -1 && commaIndex3 != -1) {
+      unsigned long delayMs = rowString.substring(0, commaIndex1).toInt();
+      int leftMotor = rowString.substring(commaIndex1 + 1, commaIndex2).toInt();
+      int rightMotor = rowString.substring(commaIndex2 + 1, commaIndex3).toInt();
+      float logValue = rowString.substring(commaIndex3 + 1).toFloat();
+      //저징
+      commands[commandCount] = {delayMs, leftMotor, rightMotor, logValue};
+      commandCount++;
+    }
+    // 다음 행
+    rowStartIndex = rowEndIndex + 1;
+    rowEndIndex = dataString.indexOf('|', rowStartIndex);
+  }
+  if (rowStartIndex < dataString.length() && commandCount < MAX_COMMANDS) {
+    String lastRowString = dataString.substring(rowStartIndex);
+
+    int commaIndex1 = lastRowString.indexOf(',');
+    int commaIndex2 = lastRowString.indexOf(',', commaIndex1 + 1);
+    int commaIndex3 = lastRowString.indexOf(',', commaIndex2 + 1);
+
+    if (commaIndex1 != -1 && commaIndex2 != -1 && commaIndex3 != -1) {
+      unsigned long delayMs = lastRowString.substring(0, commaIndex1).toInt();
+      int leftMotor = lastRowString.substring(commaIndex1 + 1, commaIndex2).toInt();
+      int rightMotor = lastRowString.substring(commaIndex2 + 1, commaIndex3).toInt();
+      float logValue = lastRowString.substring(commaIndex3 + 1).toFloat();
+
+      commands[commandCount] = {delayMs, leftMotor, rightMotor, logValue};
+      commandCount++;
+    }
+  }
+
+  for (int i = 0; i < commandCount; i++) {
+    Serial.printf("번호 %d: 대기=%lu, 좌=%d, 우=%d, ahrs=%.2f\n",
+                  i, commands[i].delayMs, commands[i].leftMotor, commands[i].rightMotor, commands[i].logValue);
+  }
+  isReplaying = true; // 데이터 파싱 후 리플레이
+  currentCommandIndex = 0;
+  lastCommandTime = millis();
+}
 //-------------------------------------실행---------------------------------------------------------//
 
 
