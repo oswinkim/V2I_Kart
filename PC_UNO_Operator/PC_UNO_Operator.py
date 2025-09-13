@@ -2,6 +2,7 @@
 import socket
 import select
 
+import numpy as np
 import os
 
 import random as r
@@ -460,6 +461,9 @@ def Kart2Player(U,msg):
         #같음
         U.drivingRecord.append(histo)
 
+    else:
+        print(f"recived data: {msg}")
+
     if msg in colorAll:
 
         # print(f"{U.userName}의 color:{msg}")
@@ -623,6 +627,89 @@ def gamePlay():
             print(f"[게임상태:{gameState}]\n 게임재게")
             return
 
+# def laneChange(x, y):
+#     if (y/2 > x/2):
+#         print("[경로 변경 불가|좌표 오류]")
+#         print(f"x/2: {x/2}\ny/2: {y/2}")
+#         return
+    
+#     middlePointX = x/2
+#     middlePointY = y/2
+#     radius = (middlePointX**2 + middlePointY**2) / (4 * middlePointY)
+#     angle = np.arctan(middlePointX/(radius - middlePointY))*180/np.pi
+
+#     # 각도에 따른 모터값 찾는 코드 필요
+
+#     return
+
+def laneChange(x, y, currentSpeed):
+    """
+    차선 변경 경로를 계산하고, 실제 이동 거리를 기반으로 시간을 계산합니다.
+    x: 도착점의 x좌표
+    y: 도착점의 y좌표
+    currentSpeed: 차량의 현재 속도 (단위: m/s)
+    """
+    # 좌표 오류 검사: y/2 > x/2 일 경우 경로 설정 불가
+    if y / 2 > x / 2:
+        print("[경로 변경 불가|좌표 오류]")
+        print(f"x/2: {x/2}\ny/2: {y/2}")
+        return
+
+    # y가 0이면 수평 이동이므로 조향각 불필요
+    if y == 0:
+        print("수평 이동 경로입니다. 조향각 계산이 필요하지 않습니다.")
+        return
+
+    # 첫 번째 원의 반지름 계산 (출발점에서 중점까지)
+    # R = (x^2 + y^2) / (4y)
+    radius = (x**2 + y**2) / (4 * y)
+
+    # 첫 번째 구간(중점까지) 조향각 계산 (라디안)
+    # tan(theta) = x / (2 * (radius - y/2))
+    angleRad1 = np.arctan(x / (2 * (radius - y/2)))
+    angleDeg1 = np.degrees(angleRad1)
+
+    print(f"첫 번째 구간(중점까지) 조향각: {angleDeg1:.2f}도")
+    
+    # 중점까지의 실제 이동 거리 (호의 길이) 계산
+    # 호의 길이 = 반지름 * 중심각 (라디안)
+    # 중심각은 2 * 조향각(라디안)
+    distanceToMidpoint = radius * (2 * angleRad1)
+    
+    # 시간 계산 (시간 = 거리 / 속도)
+    if currentSpeed > 0:
+        timeToMidpoint = distanceToMidpoint / currentSpeed
+        print(f"중점까지 도달하는 예상 시간 (이동 거리 기반): {timeToMidpoint:.2f}초")
+    else:
+        print("차량의 속도가 0이므로 시간을 계산할 수 없습니다.")
+
+    # 첫 번째 구간 모터 속도 계산
+    maxSpeed = 250
+    turnFactor1 = angleDeg1 / 45.0
+    leftMotorSpeed1 = maxSpeed * (1 - turnFactor1)
+    rightMotorSpeed1 = maxSpeed * (1 + turnFactor1)
+    
+    # 모터 속도 값이 음수가 되지 않도록 보정
+    leftMotorSpeed1 = max(0, min(maxSpeed, leftMotorSpeed1))
+    rightMotorSpeed1 = max(0, min(maxSpeed, rightMotorSpeed1))
+    
+    print(f"첫 번째 구간 좌측 모터 속도: {leftMotorSpeed1:.2f}")
+    print(f"첫 번째 구간 우측 모터 속도: {rightMotorSpeed1:.2f}")
+    
+    # 두 번째 구간(중점에서 도착점까지) 조향각 및 모터 속도 계산
+    
+    # 두 번째 구간은 첫 번째 구간과 대칭이므로 조향각의 부호가 반대가 됩니다.
+    angleDeg2 = -angleDeg1
+    
+    print(f"\n두 번째 구간(끝까지) 조향각: {angleDeg2:.2f}도")
+    
+    # 두 번째 구간 모터 속도는 첫 번째 구간과 반대
+    leftMotorSpeed2 = rightMotorSpeed1
+    rightMotorSpeed2 = leftMotorSpeed1
+
+    print(f"두 번째 구간 좌측 모터 속도: {leftMotorSpeed2:.2f}")
+    print(f"두 번째 구간 우측 모터 속도: {rightMotorSpeed2:.2f}")
+
 # 실행 시 변경해야 할 부분
 worldSockets = []
 keysMove = ["w","a","s","d","="]
@@ -648,8 +735,8 @@ Dao = User(
 
 Bazzi = User(
         userName = "빨강",
-        nameKart = "빨강색카트", ipKart = "192.168.3.197", sendPortKart = "7000", revPortKart = "7001",
-        namePlayer = "배찌", ipPlayer = "192.168.3.187", sendPortPlayer = "8000", revPortPlayer = "8000",
+        nameKart = "파랑색카트", ipKart = "192.168.3.11", sendPortKart = "7000", revPortKart = "7001",
+        namePlayer = "배찌", ipPlayer = "192.168.3.14", sendPortPlayer = "8000", revPortPlayer = "8000",
         role="rat"
     )
 
