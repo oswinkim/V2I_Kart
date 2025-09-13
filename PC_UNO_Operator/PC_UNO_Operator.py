@@ -708,6 +708,38 @@ def pathReproduction(targetDevice, header="[replay]", file='example.csv'):
     print(f"{processedData}\n")
     print(f"{packedData}\n")
 
+    sendReliableUdp(targetDevice, packedData, packedData)
+
+def sendReliableUdp(targetDevice, sendMsg, recvAck, maxRetries=-1, timeout=1):
+    #신뢰성 있는 UDP 패킷을 전송하고 수신 확인을 받습니다.
+    print(f"DEBUG: '{targetDevice.name}'에게 신뢰성 있는 패킷 송신: {sendMsg}")
+    tryCount = 0
+
+    while True:
+        if maxRetries != -1:
+            tryCount += 1
+            if tryCount >= maxRetries:
+                print(f"WARNING: '{targetDevice.name}'에 대한 {maxRetries}번의 전송 시도가 실패함. 처리를 건너뜀")
+                return False
+
+        send(targetDevice, sendMsg)
+        readable, _, _ = select.select(worldSockets, [], [], timeout)
+
+        if readable:
+            rawData, addr = sock.recvfrom(1024)
+            data = rawData.decode().strip()
+
+            if data and addr[0] == targetDevice.ip:
+                if data == recvAck:
+                    print(f"DEBUG: '{targetDevice.name}'에게 패킷({sendMsg}) 송신 완료")
+                    return True
+                else:
+                    print(f"WARNING: '{targetDevice.name}'에게 수신확인 패킷({recvAck})이 아닌 패킷이 수신됨(sended: {sendMsg} / received: {data})")
+        else:
+            print(f"DEBUG: '{targetDevice.name}'에서 수신된 패킷이 없음. {sendMsg}를 재전송...")
+        
+        time.sleep(timeout)
+
 # 실행 시 변경해야 할 부분
 worldSockets = []
 keysMove = ["w","a","s","d","="]
