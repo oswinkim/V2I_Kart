@@ -603,6 +603,8 @@ void replayLogSave(char packetBuffer[255]) {
     Serial.println("알 수 없는 포맷");
     return;
   }
+  // ACK 메시지 전송
+  sendMsg(receivedString);
   // [포맷] 접두사 제거
   String dataString = receivedString.substring(receivedString.indexOf("[replay]") + 8);
 
