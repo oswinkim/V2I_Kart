@@ -816,8 +816,9 @@ void loop() {
           isReplaying = false;
           driving(0, 0);
           Serial.println("강제정지");
-        } else if (strcmp(packetBuffer, "[replay]") == 0) {
+        } else if (strncmp(packetBuffer, "[replay]", 8) == 0) {
             replayLogSave(packetBuffer);
+            isReplaying = true;
         }
 
     }
