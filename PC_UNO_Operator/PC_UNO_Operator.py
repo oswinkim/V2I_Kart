@@ -727,19 +727,20 @@ def sendReliableUdp(targetDevice, sendMsg, recvAck, maxRetries=-1, timeout=1):
         readable, _, _ = select.select(worldSockets, [], [], timeout)
 
         if readable:
-            rawData, addr = sock.recvfrom(1024)
-            data = rawData.decode().strip()
-
-            if data and addr[0] == targetDevice.ip:
-                if data == recvAck:
-                    print(f"DEBUG: '{targetDevice.name}'에게 패킷({sendMsg}) 송신 완료")
-                    return True
-                else:
-                    print(f"WARNING: '{targetDevice.name}'에게 수신확인 패킷({recvAck})이 아닌 패킷이 수신됨(sended: {sendMsg} / received: {data})")
+            for sock in readable:
+                try:
+                    rawData, addr = sock.recvfrom(1024)
+                    data = rawData.decode().strip()
+                    if data and addr[0] == targetDevice.ip:
+                        if data == recvAck:
+                            print(f"DEBUG: '{targetDevice.name}'에게 패킷({sendMsg}) 송신 완료")
+                            return True
+                        else:
+                            print(f"WARNING: '{targetDevice.name}'에게 수신확인 패킷({recvAck})이 아닌 패킷이 수신됨(sended: {sendMsg} / received: {data})")
+                except Exception as e:
+                    print(f"소켓 오류: {e}")
         else:
             print(f"DEBUG: '{targetDevice.name}'에서 수신된 패킷이 없음. {sendMsg}를 재전송...")
-        
-        time.sleep(timeout)
 
 # 실행 시 변경해야 할 부분
 worldSockets = []
