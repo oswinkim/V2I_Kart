@@ -650,8 +650,7 @@ def pathReproduction(targetDevice, header="[replay]", file='example.csv'):
     data = []
     print(f"CSV 파일 읽어오기: {file}")
     try:
-        # 'cp949' 또는 'euc-kr' 인코딩을 지정하여 파일 열기
-        with open(file, 'r', encoding='cp949') as file:
+        with open(file, 'r', encoding='utf-8') as file:
             reader = csv.reader(file)
             print("CSV 파일 내용:")
             for row in reader:
@@ -660,7 +659,7 @@ def pathReproduction(targetDevice, header="[replay]", file='example.csv'):
     except FileNotFoundError:
         print(f"오류: {file} 파일을 찾을 수 없습니다.")
     except UnicodeDecodeError:
-        print("오류: 파일을 CP949로 디코딩 실패, 다른 인코딩을 시도해 보세요.")
+        print(f"오류: {file} 파일을 utf-8로 디코딩 실패")
     print()
     #return data
 
@@ -673,10 +672,10 @@ def pathReproduction(targetDevice, header="[replay]", file='example.csv'):
         print("파싱된 데이터가 없음")
         return
     for i, currentRow in enumerate(parsedData):
-        currentTime = int(currentRow[2])
-        leftMotorState = int(currentRow[3])
-        rightMotorState = int(currentRow[4])
-        directionValue = float(currentRow[5])
+        currentTime = int(currentRow[2].strip())
+        leftMotorState = int(currentRow[3].strip())
+        rightMotorState = int(currentRow[4].strip())
+        directionValue = float(currentRow[5].strip())
 
         if i == 0:
             delay = 0
@@ -684,9 +683,9 @@ def pathReproduction(targetDevice, header="[replay]", file='example.csv'):
             processedData.append(newRecord)
         else:
             prevRow = parsedData[i - 1]
-            prevLeftState = int(prevRow[3])
-            prevRightState = int(prevRow[4])
-            delay = currentTime - int(prevRow[2])
+            prevLeftState = int(prevRow[3].strip())
+            prevRightState = int(prevRow[4].strip())
+            delay = currentTime - int(prevRow[2].strip())
 
             if (leftMotorState == prevLeftState) and (rightMotorState == prevRightState):
                 processedData[-1][0] += delay
