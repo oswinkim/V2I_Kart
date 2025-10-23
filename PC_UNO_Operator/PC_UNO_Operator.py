@@ -128,16 +128,18 @@ class User:
                                  f'sendPortPlayer = {self.Player.sendPort}', 
                                  f'revPortPlayer = {self.Player.revPort}', 
                                  ], 
-                                ["현재구간", 
-                                 "최초 연결시간", 
-                                 "현재시간", 
-                                 "왼쪽 모터상태", 
-                                 "오른쪽 모터상태", 
-                                 "방향변환값",
-                                 "변환된 컬러값",  
-                                 "LUX", 
-                                 "컬러R", "컬러G", "컬러B", 
-                                 "raw방향값"]]
+                                ["CurrentSegment",
+                                "InitialConnectionTime",
+                                "CurrentTime",
+                                "LeftMotorState",
+                                "RightMotorState",
+                                "DirectionConversionValue",
+                                "ConvertedColorValue",
+                                "LUX",
+                                "ColorR",
+                                "ColorG",
+                                "ColorB",
+                                "RawDirectionValue"]]
         
         self.trace = []
 
