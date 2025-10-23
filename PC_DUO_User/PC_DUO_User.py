@@ -30,7 +30,7 @@ sockRecv.bind(("", pc2RecvPort))  # 온도 데이터 수신 소켓
 while True:
     try:
         event = keyboard.read_event()
-        if event.eventType == keyboard.KEY_DOWN:  # 키 눌림 감지
+        if event.event_type == keyboard.KEY_DOWN:  # 키 눌림 감지
             key = event.name  # 눌린 키 이름
 
             if key == "q":  # 'q' 입력 시 종료
