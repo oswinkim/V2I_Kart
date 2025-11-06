@@ -301,6 +301,7 @@ String motorDeviation(float error, int transmit = 1){
   unsigned long delayLeastMotor = 1500, delayWeakMotor = 3000, delayStraightMotor = 3000, delayDistance = 2000 ,delayStop = 500;
   String head = "[motorDeviation]";
 
+  // AHRS 의 값이 측정 되지 않았을 경우
   while (yaw == 0) {
   yawAhrs();
   Serial.println("yaw value renewal");
@@ -445,12 +446,13 @@ String motorDeviation(float error, int transmit = 1){
     delay(delayWeakMotor);
     driving(0, 0);
     delay(delayStop);
+    yawAhrs();
+    yawAhrs();
     driving(-leftMotorLeast, -rightMotorLeast);
     delay(delayWeakMotor);
     driving(0, 0);
     delay(delayStop);
 
-    yawAhrs();
     Serial.print("yaw:");
     Serial.println(yaw);
 
@@ -695,7 +697,6 @@ void loop() {
             // sendMsg(data(startTime, motorAState, motorBState));
             sendMsg(packetBuffer);
         }
-
         if (aa == 1) {
             motorAState = motorA;
             motorBState = motorB;
