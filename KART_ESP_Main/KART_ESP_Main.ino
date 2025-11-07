@@ -25,8 +25,17 @@ const int freq = 1000;
 const int resolution = 8;
 int motorAState = 250;
 int motorBState = 250;
-int motorA =250;
-int motorB =250;
+int motorALeast =250;
+int motorBLeast =250;
+int motorAMax = 255;
+int motorBMax = 255;
+int targetMotorA = 0;
+int targetMotorB = 0;
+int motorDelay = 500;
+int stepUnitA = 10;
+int stepUnitB = 10;
+unsigned long Time2ChangeMotorPrevious = 0;
+unsigned long Time2ChangeMotorCurrent = 0;
 // AHRS 설정
 #define maxLineLength 64
 HardwareSerial ahrsSerial(2);
@@ -591,8 +600,8 @@ String motorDeviation(float error, int transmit = 1){
   String msg = "[motorDeviation]|" + String(leftMotorLeast) + "|" + String(rightMotorLeast) + "|" +
                 String(leftMotorStraight) + "|" + String(rightMotorStraight) + "|" + String(actionTime);
 
-  motorA = leftMotorStraight;
-  motorB = rightMotorStraight;
+  motorALeast = leftMotorStraight;
+  motorBLeast = rightMotorStraight;
   sendMsg("over calibration!");
   return msg;
 }
@@ -641,15 +650,15 @@ void setup() {
     if(WiFi.localIP()=="192.168.0.14"){
         sendPort = 4213;
         recvPort = 4212;
-        motorA = 250;
-        motorB = 250;
+        motorALeast = 250;
+        motorBLeast = 250;
     }
 
     else if(WiFi.localIP()=="192.168.0.18"){
         sendPort = 7000;
         recvPort = 7001;
-        motorA = 250;
-        motorB = 250;
+        motorALeast = 250;
+        motorBLeast = 250;
 
     }
     Serial.print("recvPort: ");
@@ -675,7 +684,30 @@ void setup() {
 }
 
 void loop() {
-  
+    Time2ChangeMotorCurrent = millis();
+    if (Time2ChangeMotorCurrent-Time2ChangeMotorPrevious >= motorDelay){
+      Time2ChangeMotorPrevious = Time2ChangeMotorCurrent;
+
+      if (motorAState < targetMotorA){
+        motorAState += stepUnitA;
+        if (motorAState>motorAMax) motorAState=motorAMax;
+      }
+      else if (motorAState > targetMotorA){
+        motorAState -= stepUnitA;
+        if (motorAState<motorAMax) motorAState=motorAMax;
+      }
+      if (motorBState < targetMotorB){
+        motorBState += stepUnitB;
+        if (motorBState>motorAMax) motorBState=motorBMax;
+      }
+      else if (motorBState > targetMotorB){
+        motorBState -= stepUnitB;
+        if (motorBState<motorBMax) motorBState=motorBMax;
+      }
+      driving(motorBState, motorAState);
+    }
+
+
     char packetBuffer[255];
     int packetSize = udp.parsePacket();
     
@@ -698,25 +730,22 @@ void loop() {
             sendMsg(packetBuffer);
         }
         if (aa == 1) {
-            motorAState = motorA;
-            motorBState = motorB;
             if (strcmp(packetBuffer, "w") == 0) {
                 Serial.println("advance");
-                driving(motorAState, motorBState);
-                sendMsg(data(startTime, motorAState, motorBState));
+                targetMotorA = motorAMax;
+                targetMotorB = motorBMax;
             } else if (strcmp(packetBuffer, "a") == 0) {
-                driving(0, motorBState);
-                sendMsg(data(startTime, motorAState, motorBState));
+                targetMotorA = 0;
+                targetMotorB = motorBMax;
             } else if (strcmp(packetBuffer, "d") == 0) {
-                driving(motorAState, 0);
-                sendMsg(data(startTime, motorAState, motorBState));
+                targetMotorA = motorAMax;
+                targetMotorB = 0;
             } else if (strcmp(packetBuffer, "s") == 0) {
-                driving(-motorAState, -motorBState);
-                sendMsg(data(startTime, motorAState, motorBState));
+                targetMotorA = -motorAMax;
+                targetMotorB = -motorBMax;
             } else if (strcmp(packetBuffer, "i") == 0) {
-                driving(0, 0);
-                sendMsg(data(startTime, motorAState, motorBState));
-                
+                targetMotorA = 0;
+                targetMotorB = 0;
             } else if (strcmp(packetBuffer, "[colorAdjust]") == 0){
               colorAdjust();
             } else if (strcmp(packetBuffer, "ahrs") == 0) {
@@ -729,11 +758,13 @@ void loop() {
                 String msg = "[color]" + String(currentLux) + "," + String(currentR) + "," + String(currentG) + "," + String(currentB);
                 sendMsg(msg);
             } else if(strcmp(packetBuffer, "stop") == 0) {
-                driving(0, 0);
+                targetMotorA = 0;
+                targetMotorB = 0;
                 Serial.println("stop!!!!!!!!!!!!!!!!!!!");
                 delay(5000);   
             } else if(strcmp(packetBuffer, "[die]") == 0) {
-                driving(0, 0);
+                targetMotorA = 0;
+                targetMotorB = 0;
                 delay(1000);
             } else if(strcmp(packetBuffer, "[name]") == 0) {
               tcs.getRawData(&currentR, &currentG, &currentB, &currentC);
