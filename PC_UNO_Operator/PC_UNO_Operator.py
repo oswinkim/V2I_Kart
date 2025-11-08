@@ -460,6 +460,34 @@ def Kart2Player(U,msg):
         #최종형태["현재구간", "최초 연결시간", "현재시간", "왼쪽 모터상태", "오른쪽 모터상태", "방향변환값","변환된 컬러값",  "LUX", "컬러R", "컬러G", "컬러B", "raw방향값"]
         #같음
         U.drivingRecord.append(histo)
+    
+    # --- [새로 추가된 로직] ---
+    # 1. 아두이노가 'motorDeviation' 시작 승인을 요청하는 경우
+    elif "[motorDeviation]Ready? Send 'start_move'" in msg:
+        print(f"\n[!] 카트 [{U.userName}]가 보정 측정을 요청합니다.")
+        
+        # ★★★ 중요 ★★★
+        # input() 함수는 사용자 입력을 기다리는 동안 메인 루프 전체를 '멈추게' 합니다.
+        # 카트 1대만 테스트할 때는 괜찮지만,
+        # 여러 카트를 동시에 운영할 때는 이 부분에서 다른 카트의 응답이 모두 멈춥니다.
+        user_input = input(f"    [{U.userName}]의 측정을 승인하시겠습니까? (yes/no): ").strip().lower()
+        if user_input == 'yes' or user_input == 'y':
+             # 아두이노에게 "start_move" 명령을 전송
+            send(U.Kart, "start_move")
+        else:
+            print("    측정을 취소했습니다. (아두이노는 30초 후 자동으로 타임아웃됩니다)")
+
+    # 2. 'motorDeviation'이 최종 측정 결과값을 보낸 경우 (파이프'|'로 구분)
+    elif "[motorDeviation]|" in msg:
+        print(f"[CALIBRATION_RESULT from {U.userName}]: {msg}")
+        #################################################################################################################################################################
+        # TODO: 여기서 수신한 'actionTime' 등을 파싱하여 저장할 수 있습니다.
+        # 예: U.Kart.motorCalibData = msg.split('|')[1:]
+
+    # 3. 'motorDeviation'이 단순 상태 메시지를 보낸 경우
+    elif "[motorDeviation]" in msg:
+        print(f"[CALIBRATION_STATUS from {U.userName}]: {msg}")
+    # --- [추가 로직 끝] ---
 
     else:
         print(f"recived data: {msg}")
@@ -554,10 +582,100 @@ def colorAdjust(U):
         colorAll = ["mdf", "red", "blue", "green", "pink", "orange", "sky", "white"]
     print("수집완료")
 
+    if msg in colorAll2:
+
+        # print(f"{U.userName}의 color:{msg}")
+        U.Kart.colorName = msg
+        print(f"{U.userName}의 color:{msg}")
+        # if(U.role == "rat"):
+        send(U.Player, f"[현재색]{U.Kart.colorName}")
+
+colorAll2 = ["mmdf", "black"]
+colorRelation2 = {"mdf" : 1, "black" : 0}
+def colorAdjust2(U:User):
+    colorAll2 = ["mmdf", "black"]
+    try:
+        if(U.type == "User"):
+            pass
+    except:
+            print("wrong type in colorAdjust2")
+            return
+
+    #2색상
+    storedColors2 = []
+
+    # colorAdjust2상태로 연결시도
+    print("esp32를 컬러보정 상태로 변경중...")
+    while 1:
+        send(U.Kart, "[colorAdjust2]")
+        readable, _, _ = select.select(worldSockets, [], [], 1)
+
+        if not readable:
+            print("재전송")
+        else:
+            for sock in readable:
+                data, addr = sock.recvfrom(1024)  # 데이터 수신
+                msg = data.decode().strip()
+
+            if sock == U.Kart.socket:
+                if "[colorAdjust2]" in msg:
+                    send(U.Kart, "success")
+                    print("ready to adjust")
+                    break
+                else:
+                    print("ERROR:요청하지 않은 메시지")
+                    print(f"msg:{msg}")
+
+    for p in range(2):
+        print(f"{colorAll2[p]}색상을 보정합니다(진행도: {(p+1)}/{len(colorAll2)}).")
+        while 1:
+            
+            send(U.Kart, "color=" + colorAll2[p])
+            readable, _, _ = select.select(worldSockets, [], [], 1)
+
+            if not readable:
+                print(f"{colorAll2[p]}색상값 재요청, p:{p}")
+            else:
+                for sock in readable:
+                    data, addr = sock.recvfrom(1024)  # 데이터 수신
+                    msg = data.decode()
+                    
+                if (sock == U.Kart.socket):
+                    if "[raw_color]" in msg:
+                        print(f"원상데이터:{msg}")
+                        msg = msg[12:]
+                        msg = msg.split("|")
+
+                        for i in range(5):
+                            print(f"{i+1}: Name = {msg[5*i]}, Lux = {msg[5*i+1]}, R = {msg[5*i+2]}, G = {msg[5*i+3]}, B={msg[5*i+4]}")
+                        
+                        print(f"Average: Name = {msg[5*5]}, Lux = {msg[5*5+1]}, R = {msg[5*5+2]}, G = {msg[5*5+3]}, B = {msg[5*5+4]}")
+
+                        if (colorAll2[p] in msg):
+                        # 테스트용 주석
+                            decision =input("Accept this measurement? (y/n): ")
+                        else:
+                            decision = "false"
+
+                        if decision.lower() == 'y':
+                            print(f"저장값: {[msg[5*5], msg[5*5+1], msg[5*5+2], msg[5*5+3], msg[5*5+4]]}")
+                            storedColors2.append([msg[5*5], msg[5*5+1], msg[5*5+2], msg[5*5+3], msg[5*5+4]])
+                            break
+                        else:
+                            print("현재 측정값 거부 재측정시작")
+
+                    else:
+                        print("ERROR:요청하지 않은 메시지")
+                        print(f"msg:{msg}")
+
+        print(f"{colorAll2}색상 보정 완료")
+        colorAll2 = ["mdf", "black"]
+    print("수집완료")
+
     msg="colorData"
-    for i in range(len(storedColors)):
-        msg += f"|{storedColors[i][0]}|{storedColors[i][1]}|{storedColors[i][2]}|{storedColors[i][3]}|{storedColors[i][4]}"
-    print(f"형식:{type(storedColors[0][1])}")
+    for i in range(len(storedColors2)):
+        msg += f"|{storedColors2[i][0]}|{storedColors2[i][1]}|{storedColors2[i][2]}|{storedColors2[i][3]}|{storedColors2[i][4]}"
+    print(f"형식:{type(storedColors2[0][1])}")
     sendMsg = msg
 
     while 1:
