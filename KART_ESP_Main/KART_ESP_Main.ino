@@ -8,9 +8,9 @@
 WiFiUDP udp;
 const char* ssid = "a12";
 const char* password = "12345678";
-unsigned int recvPort = 7001;   //wifi연결 후 자동 설정
+unsigned int recvPort = 7000;   //wifi연결 후 자동 설정
 unsigned int sendPort = 7000;
-IPAddress pc1Ip(192, 168, 3, 228);
+IPAddress pc1Ip(192, 168, 241, 228);
 
 int aa = 0;
 int bb = 0;
@@ -23,17 +23,17 @@ int cc = 0;
 #define motorBIn2 33
 const int freq = 1000;
 const int resolution = 8;
-int motorAState = 250;
-int motorBState = 250;
+int motorAState = 255;
+int motorBState =255;
 int motorALeast =250;
 int motorBLeast =250;
 int motorAMax = 255;
 int motorBMax = 255;
 int targetMotorA = 0;
 int targetMotorB = 0;
-int motorDelay = 500;
 int stepUnitA = 10;
 int stepUnitB = 10;
+unsigned long motorDelay = 10;
 unsigned long Time2ChangeMotorPrevious = 0;
 unsigned long Time2ChangeMotorCurrent = 0;
 // AHRS 설정
@@ -145,7 +145,7 @@ void yawAhrs(){
       }
     yawDiff = startYaw - yaw;
   }
-  sendMsg("yaw: "+String(yaw));
+  // sendMsg("yaw: "+String(yaw));
 }
 
 // 데이터 문자열 생성 함수
@@ -293,6 +293,7 @@ void colorAdjust() {
     }
 
   }
+  bb = 0;
 }
 
 // 색상 이름 업데이트 함수
@@ -317,26 +318,6 @@ String motorDeviation(float error, int transmit = 1){
   if (transmit) sendMsg(head + "yaw value renewal");
   }
 
-  // // 180도 부근으로 방향 보정
-  // Serial.println("locating");
-  // if (transmit) sendMsg(head + "locating");
-  // if (transmit) sendMsg(head + "yaw" + String(yaw));
-  // yawAhrs();
-  // while(yaw < 170 || yaw > 190){
-  //   while(yaw < 170){
-  //     driving(200, -200);
-  //     yawAhrs();
-  //   }
-  //   driving(0, 0);
-  //   delay(delayStop);
-  //   while(yaw > 190){
-  //     driving(-200, 200);
-  //     yawAhrs();
-  //   }
-  //   driving(0, 0);
-  //   delay(delayStop);
-  //   yawAhrs();
-  // }
   driving(0, 0);
   delay(delayStop);
 
@@ -419,8 +400,17 @@ String motorDeviation(float error, int transmit = 1){
     }
     leftMotorLeast += 10;
   }
-  rightMotorLeast += 30;
-  leftMotorLeast += 30;
+  stepUnitA = leftMotorLeast/33 + 0.5;
+  stepUnitB = rightMotorLeast/33 + 0.5;
+  Serial.printf("stepUnitA: %d\n", stepUnitA);
+  Serial.printf("stepUnitB: %d\n", stepUnitB);  
+  Serial.printf("[origin]leftMotorLeast: %d\n", leftMotorLeast);
+  Serial.printf("[origin]rightMotorLeast: %d\n", rightMotorLeast);
+  leftMotorLeast = leftMotorLeast*(35/33) + 0.5;
+  rightMotorLeast = rightMotorLeast*(35/33) + 0.5;
+  Serial.printf("[after]leftMotorLeast: %d\n", leftMotorLeast);
+  Serial.printf("[after]rightMotorLeast: %d\n", rightMotorLeast);
+
 
   // 180도 부근으로 방향 보정
   Serial.println("locating");
@@ -598,7 +588,8 @@ String motorDeviation(float error, int transmit = 1){
   unsigned long actionTime = 0;
 
   String msg = "[motorDeviation]|" + String(leftMotorLeast) + "|" + String(rightMotorLeast) + "|" +
-                String(leftMotorStraight) + "|" + String(rightMotorStraight) + "|" + String(actionTime);
+                String(leftMotorStraight) + "|" + String(rightMotorStraight) + "|" + String(actionTime)+ 
+                "|" + String(stepUnitA)+ "|" + String(stepUnitB);
 
   motorALeast = leftMotorStraight;
   motorBLeast = rightMotorStraight;
@@ -632,7 +623,6 @@ void driving(int leftMotorValue, int rightMotorValue){
 //-------------------------------------실행---------------------------------------------------------//
 
 void setup() {
-
     Serial.begin(9600);
     ahrsSerial.begin(115200, SERIAL_8N1, 34, -1);
     WiFi.begin(ssid, password);
@@ -641,7 +631,7 @@ void setup() {
     while (WiFi.status() != WL_CONNECTED) {
         delay(1000);
         Serial.println("Connecting to WiFi...");
-    }
+        }
 
     Serial.println("Connected to WiFi!");
     Serial.println("<esp32_ip>");
@@ -681,30 +671,56 @@ void setup() {
         Serial.println("No TCS34725 found ... check your connections");
         while (1);
     }
+  delay(2000);
+
 }
 
 void loop() {
     Time2ChangeMotorCurrent = millis();
-    if (Time2ChangeMotorCurrent-Time2ChangeMotorPrevious >= motorDelay){
-      Time2ChangeMotorPrevious = Time2ChangeMotorCurrent;
+    if (motorAState!=targetMotorA || motorBState != targetMotorB){
+      Serial.printf("A:%d, TargetA:%d\n", motorAState, targetMotorA);
+      Serial.printf("B:%d, TargetB:%d\n", motorBState, targetMotorB);
 
-      if (motorAState < targetMotorA){
-        motorAState += stepUnitA;
-        if (motorAState>motorAMax) motorAState=motorAMax;
+      if (Time2ChangeMotorCurrent-Time2ChangeMotorPrevious >= motorDelay){
+        Time2ChangeMotorPrevious = Time2ChangeMotorCurrent;
+        if (motorAState < targetMotorA){
+          motorAState += stepUnitA;
+          if (motorAState>0) {
+            if (motorAState<motorALeast) motorAState=motorALeast;
+            else if (motorAState>motorAMax) motorAState=motorAMax;
+          }
+          else if (motorAState>-motorALeast) motorAState=0;
+        }
+        else if (motorAState > targetMotorA){
+          motorAState -= stepUnitA;
+          if (motorAState<0) {
+            if (motorAState>-motorALeast) motorAState=-motorALeast;
+            else if (motorAState<-motorAMax) motorAState=-motorAMax;
+          }
+          else if (motorAState<motorALeast) motorAState=0;
+        }
+
+        if (motorBState < targetMotorB){
+          motorBState += stepUnitA;
+          if (motorBState>0) {
+            if (motorBState<motorBLeast) motorBState=motorBLeast;
+            else if (motorBState>motorBMax) motorBState=motorBMax;
+          }
+          else if (motorBState>-motorBLeast) motorBState=0;
+        }
+        else if (motorBState > targetMotorB){
+          motorBState -= stepUnitA;
+          if (motorBState<0) {
+            if (motorBState>-motorBLeast) motorBState=-motorBLeast;
+            else if (motorBState<-motorBMax) motorBState=-motorBMax;
+          }
+          else if (motorBState<motorBLeast) motorBState=0;
+        }
+
+        if(abs(motorAState)<stepUnitA) motorAState=0;
+        if(abs(motorBState)<stepUnitB) motorBState=0;
+        driving(motorAState, motorBState);
       }
-      else if (motorAState > targetMotorA){
-        motorAState -= stepUnitA;
-        if (motorAState<motorAMax) motorAState=motorAMax;
-      }
-      if (motorBState < targetMotorB){
-        motorBState += stepUnitB;
-        if (motorBState>motorAMax) motorBState=motorBMax;
-      }
-      else if (motorBState > targetMotorB){
-        motorBState -= stepUnitB;
-        if (motorBState<motorBMax) motorBState=motorBMax;
-      }
-      driving(motorBState, motorAState);
     }
 
 
@@ -772,7 +788,7 @@ void loop() {
               currentColorName = colorDefine(currentLux, currentR, currentG, currentB, tuningSize);
               sendMsg(currentColorName);
             } else if(strcmp(packetBuffer,  "=") == 0){
-              motorDeviation(60);
+              sendMsg(motorDeviation(20));
             }
             if(cc>0 && cc<30){
                   String msg = "[save]";
