@@ -58,13 +58,9 @@ String tuning[8][5] = {
   { "sky", "240", "386", "373", "305" },
   { "white", "218", "615", "409", "311" }
 };  // 최종 2차원 배열
-String tuning2[2][5] = {
-  { "mdf", "44", "247", "114", "76" },
-  { "black", "65485", "337", "60", "50" },  
-};  // 최종 2차원 배열
+
 int tokenCount = 0;
 int tuningSize = 8;
-int tuningSize2 = 2;
 #define i2cSda 13
 #define i2cScl 27
 uint16_t currentR = 0, currentG = 0, currentB = 0, currentC = 0, currentLux = 0;
@@ -86,6 +82,21 @@ Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_154MS, TCS347
 unsigned long startTime = 0;
 unsigned long currentTime = 0;
 
+// 리플레이 로그 저장
+struct ReplayCommand {
+  unsigned long delayMs;  // 첫 번째 값: 시간 간격 (ms)
+  int leftMotor;          // 두 번째 값: 좌측 모터 (int16)
+  int rightMotor;         // 세 번째 값: 우측 모터 (int16)
+  float logValue;         // 네 번째 값: 로깅 값 (float)
+};
+// 로그 저장 배열 (최대 100)
+#define MAX_COMMANDS 100
+ReplayCommand commands[MAX_COMMANDS];
+int commandCount = 0;
+// 상태 변수
+bool isReplaying = false;
+int currentCommandIndex = 0;
+unsigned long lastCommandTime = 0;
 //-------------------------------------함수---------------------------------------------------------//
 
 // 메시지 전송 함수
@@ -166,7 +177,11 @@ String data(
   currentColorName = colorDefine(currentLux, currentR, currentG, currentB, tuningSize);
 
   // 전송
-  String msg = "[record]0|" + String(startTime) + "|" + String(currentTime) + "|" + String(motorAState) + "|" + String(motorBState) + "|" + String(yawDiff, 2) + "|" + currentColorName + "|" + String(currentLux) + "|" + String(currentR) + "|" + String(currentG) + "|" + String(currentB) + "|" + String(yaw, 2);
+      String msg = "[record]0|" + String(startTime) + "|" + String(currentTime) + "|" +
+                  String(motorAState) + "|" + String(motorBState) + "|" + String(yawDiff, 2) + "|" +
+                  currentColorName + "|" + String(currentLux) + "|" +
+                  String(currentR) + "|" + String(currentG) + "|" + String(currentB) + "|" +
+                  String(yaw, 2);
 
   return msg;
 }
@@ -387,7 +402,6 @@ String motorDeviation(float error, int transmit = 1) {
   if (transmit) sendMsg(head + "left motor finding!");
   while (1) {
     yawAhrs();
-    yawAhrs();
     Serial.print("yaw:");
     Serial.println(yaw);
     float beforeYaw = yaw;
@@ -458,7 +472,6 @@ String motorDeviation(float error, int transmit = 1) {
     driving(0, 0);
     delay(delayStop);
     yawAhrs();
-    yawAhrs();
     driving(-leftMotorLeast, -rightMotorLeast);
     delay(delayWeakMotor);
     driving(0, 0);
@@ -511,7 +524,6 @@ String motorDeviation(float error, int transmit = 1) {
     varMotorA = leftMotorLeast;
     while (1) {
       yawAhrs();
-      yawAhrs();
       float beforeYaw = yaw;
       Serial.print("left: ");
       Serial.println(varMotorA);
@@ -523,7 +535,6 @@ String motorDeviation(float error, int transmit = 1) {
       driving(0, 0);
       delay(delayStop);
 
-      yawAhrs();
       yawAhrs();
       if (yaw > beforeYaw) {
         varMotorA -= 5;
@@ -542,7 +553,6 @@ String motorDeviation(float error, int transmit = 1) {
     varMotorB = rightMotorLeast;
     while (1) {
       yawAhrs();
-      yawAhrs();
       float beforeYaw = yaw;
       Serial.print("left: ");
       Serial.println(leftMotorLeast);
@@ -554,7 +564,6 @@ String motorDeviation(float error, int transmit = 1) {
       driving(0, 0);
       delay(delayStop);
 
-      yawAhrs();
       yawAhrs();
       if (yaw < beforeYaw) {
         varMotorB -= 5;
@@ -608,6 +617,145 @@ String motorDeviation(float error, int transmit = 1) {
   return msg;
 }
 
+void replayLogSave(char packetBuffer[255]) {
+  String receivedString(packetBuffer);
+
+  // 포맷으로 시작하는지
+  if (!receivedString.startsWith("[replay]")) {
+    Serial.println("알 수 없는 포맷");
+    return;
+  }
+  // ACK 메시지 전송
+  sendMsg(receivedString);
+  // [포맷] 접두사 제거
+  String dataString = receivedString.substring(receivedString.indexOf("[replay]") + 8);
+
+  // |로 행 분리
+  int rowStartIndex = 0;
+  int rowEndIndex = dataString.indexOf('|');
+  commandCount = 0;
+
+  while (rowEndIndex != -1 && commandCount < MAX_COMMANDS) {
+    String rowString = dataString.substring(rowStartIndex, rowEndIndex);
+    // ,로 열 분리
+    int commaIndex1 = rowString.indexOf(',');
+    int commaIndex2 = rowString.indexOf(',', commaIndex1 + 1);
+    int commaIndex3 = rowString.indexOf(',', commaIndex2 + 1);
+
+    if (commaIndex1 != -1 && commaIndex2 != -1 && commaIndex3 != -1) {
+      unsigned long delayMs = rowString.substring(0, commaIndex1).toInt();
+      int leftMotor = rowString.substring(commaIndex1 + 1, commaIndex2).toInt();
+      int rightMotor = rowString.substring(commaIndex2 + 1, commaIndex3).toInt();
+      float logValue = rowString.substring(commaIndex3 + 1).toFloat();
+      //저징
+      commands[commandCount] = {delayMs, leftMotor, rightMotor, logValue};
+      commandCount++;
+    }
+    // 다음 행
+    rowStartIndex = rowEndIndex + 1;
+    rowEndIndex = dataString.indexOf('|', rowStartIndex);
+  }
+  else {
+    ledcWrite(motorAIn1, 0);
+    ledcWrite(motorAIn2, -leftMotorValue);
+  } 
+
+  // 오른쪽 모터 출력
+  if (rightMotorValue >= 0) {
+    ledcWrite(motorBIn1, rightMotorValue);
+    ledcWrite(motorBIn2, 0);
+  }
+  else {
+    ledcWrite(motorBIn1, 0);
+    ledcWrite(motorBIn2, -rightMotorValue);
+  } 
+}
+
+void replayLogSave(char packetBuffer[255]) {
+  String receivedString(packetBuffer);
+
+  // 포맷으로 시작하는지
+  if (!receivedString.startsWith("[replay]")) {
+    Serial.println("알 수 없는 포맷");
+    return;
+  }
+  // ACK 메시지 전송
+  sendMsg(receivedString);
+  // [포맷] 접두사 제거
+  String dataString = receivedString.substring(receivedString.indexOf("[replay]") + 8);
+
+  // |로 행 분리
+  int rowStartIndex = 0;
+  int rowEndIndex = dataString.indexOf('|');
+  commandCount = 0;
+
+  while (rowEndIndex != -1 && commandCount < MAX_COMMANDS) {
+    String rowString = dataString.substring(rowStartIndex, rowEndIndex);
+    // ,로 열 분리
+    int commaIndex1 = rowString.indexOf(',');
+    int commaIndex2 = rowString.indexOf(',', commaIndex1 + 1);
+    int commaIndex3 = rowString.indexOf(',', commaIndex2 + 1);
+
+    if (commaIndex1 != -1 && commaIndex2 != -1 && commaIndex3 != -1) {
+      unsigned long delayMs = rowString.substring(0, commaIndex1).toInt();
+      int leftMotor = rowString.substring(commaIndex1 + 1, commaIndex2).toInt();
+      int rightMotor = rowString.substring(commaIndex2 + 1, commaIndex3).toInt();
+      float logValue = rowString.substring(commaIndex3 + 1).toFloat();
+      //저징
+      commands[commandCount] = {delayMs, leftMotor, rightMotor, logValue};
+      commandCount++;
+    }
+    // 다음 행
+    rowStartIndex = rowEndIndex + 1;
+    rowEndIndex = dataString.indexOf('|', rowStartIndex);
+  }
+  if (rowStartIndex < dataString.length() && commandCount < MAX_COMMANDS) {
+    String lastRowString = dataString.substring(rowStartIndex);
+
+    int commaIndex1 = lastRowString.indexOf(',');
+    int commaIndex2 = lastRowString.indexOf(',', commaIndex1 + 1);
+    int commaIndex3 = lastRowString.indexOf(',', commaIndex2 + 1);
+
+    if (commaIndex1 != -1 && commaIndex2 != -1 && commaIndex3 != -1) {
+      unsigned long delayMs = lastRowString.substring(0, commaIndex1).toInt();
+      int leftMotor = lastRowString.substring(commaIndex1 + 1, commaIndex2).toInt();
+      int rightMotor = lastRowString.substring(commaIndex2 + 1, commaIndex3).toInt();
+      float logValue = lastRowString.substring(commaIndex3 + 1).toFloat();
+
+      commands[commandCount] = {delayMs, leftMotor, rightMotor, logValue};
+      commandCount++;
+    }
+  }
+
+  for (int i = 0; i < commandCount; i++) {
+    Serial.printf("번호 %d: 대기=%lu, 좌=%d, 우=%d, ahrs=%.2f\n",
+                  i, commands[i].delayMs, commands[i].leftMotor, commands[i].rightMotor, commands[i].logValue);
+  }
+  isReplaying = true; // 데이터 파싱 후 리플레이
+  currentCommandIndex = 0;
+  lastCommandTime = millis();
+}
+
+void pathReproduction(){
+    //  현재 인덱스가 유효하다면
+    if (currentCommandIndex < commandCount) {
+      ReplayCommand currentCommand = commands[currentCommandIndex];
+      // 시간차 계산
+      if (millis() - lastCommandTime >= currentCommand.delayMs) {
+        Serial.printf("현재명령(%d): 대기=%lu, 좌=%d, 우=%d\n",
+                      currentCommandIndex, currentCommand.delayMs, currentCommand.leftMotor, currentCommand.rightMotor);
+        // 모터 업데이트
+        driving(currentCommand.leftMotor, currentCommand.rightMotor);
+        // 인덱스 업데이트
+        lastCommandTime = millis();
+        currentCommandIndex++;
+      }
+    } else {
+      isReplaying = false;
+      driving(0, 0);
+      Serial.println("모든 명령 실행 완료");
+    }
+}
 //-------------------------------------실행---------------------------------------------------------//
 
 void setup() {
@@ -783,8 +931,22 @@ void loop() {
  
 
         }
+
+        if (strcmp(packetBuffer, "i") == 0) {
+          isReplaying = false;
+          driving(0, 0);
+          Serial.println("강제정지");
+        } else if (strncmp(packetBuffer, "[replay]", 8) == 0) {
+            replayLogSave(packetBuffer);
+            isReplaying = true;
+        }
+
     }
     // if(aa==1){
     //   colorName();
     // }
+
+    if (isReplaying) {
+      pathReproduction();
+    }
 }

@@ -128,16 +128,18 @@ class User:
                                  f'sendPortPlayer = {self.Player.sendPort}', 
                                  f'revPortPlayer = {self.Player.revPort}', 
                                  ], 
-                                ["현재구간", 
-                                 "최초 연결시간", 
-                                 "현재시간", 
-                                 "왼쪽 모터상태", 
-                                 "오른쪽 모터상태", 
-                                 "방향변환값",
-                                 "변환된 컬러값",  
-                                 "LUX", 
-                                 "컬러R", "컬러G", "컬러B", 
-                                 "raw방향값"]]
+                                ["CurrentSegment",
+                                "InitialConnectionTime",
+                                "CurrentTime",
+                                "LeftMotorState",
+                                "RightMotorState",
+                                "DirectionConversionValue",
+                                "ConvertedColorValue",
+                                "LUX",
+                                "ColorR",
+                                "ColorG",
+                                "ColorB",
+                                "RawDirectionValue"]]
         
         self.trace = []
 
@@ -642,6 +644,104 @@ def laneChange(x, y):
 
     return
 
+def pathReproduction(targetDevice, header="[replay]", file='example.csv'):
+    #def readCsvFile(filename):
+    # CSV 파일을 읽어와 데이터를 리스트로 반환합니다.
+    data = []
+    print(f"CSV 파일 읽어오기: {file}")
+    try:
+        with open(file, 'r', encoding='utf-8') as file:
+            reader = csv.reader(file)
+            print("CSV 파일 내용:")
+            for row in reader:
+                data.append(row)
+                print(row)
+    except FileNotFoundError:
+        print(f"오류: {file} 파일을 찾을 수 없습니다.")
+    except UnicodeDecodeError:
+        print(f"오류: {file} 파일을 utf-8로 디코딩 실패")
+    print()
+    #return data
+
+    #def parsePathData(file):
+    # CSV 파일에서 경로 데이터를 파싱하고 처리합니다.
+    parsedData = data[4:]#readCsvFile(file)[4:]
+    processedData = []
+
+    if not parsedData:
+        print("파싱된 데이터가 없음")
+        return
+    for i, currentRow in enumerate(parsedData):
+        currentTime = int(currentRow[2].strip())
+        leftMotorState = int(currentRow[3].strip())
+        rightMotorState = int(currentRow[4].strip())
+        directionValue = float(currentRow[5].strip())
+
+        if i == 0:
+            delay = 0
+            newRecord = [delay, leftMotorState, rightMotorState, directionValue]
+            processedData.append(newRecord)
+        else:
+            prevRow = parsedData[i - 1]
+            prevLeftState = int(prevRow[3].strip())
+            prevRightState = int(prevRow[4].strip())
+            delay = currentTime - int(prevRow[2].strip())
+
+            if (leftMotorState == prevLeftState) and (rightMotorState == prevRightState):
+                processedData[-1][0] += delay
+            else:
+                newRecord = [delay, leftMotorState, rightMotorState, directionValue]
+                processedData.append(newRecord)
+    #return processedData
+
+    #def dataPacking(header, processedData):
+    # 처리된 데이터를 문자열로 패킹합니다.
+    innerStrings = [','.join(map(str, sublist)) for sublist in processedData]
+    finalString = header + '|'.join(innerStrings)  + '|'
+    #return finalString
+
+    #---------
+    #경로 데이터를 처리하고 패킹하여 대상 장치로 전송합니다.
+    processedData = processedData#parsePathData(file)
+    packedData = finalString#dataPacking(header, processedData)
+
+    print("delay / left / right / distance")
+    print(f"{processedData}\n")
+    print(f"{packedData}\n")
+
+    sendReliableUdp(targetDevice, packedData, packedData)
+
+def sendReliableUdp(targetDevice, sendMsg, recvAck, maxRetries=-1, timeout=1):
+    #신뢰성 있는 UDP 패킷을 전송하고 수신 확인을 받습니다.
+    print(f"DEBUG: '{targetDevice.name}'에게 신뢰성 있는 패킷 송신: {sendMsg}")
+    tryCount = 0
+
+    while True:
+        if maxRetries != -1:
+            tryCount += 1
+            if tryCount >= maxRetries:
+                print(f"WARNING: '{targetDevice.name}'에 대한 {maxRetries}번의 전송 시도가 실패함. 처리를 건너뜀")
+                return False
+
+        send(targetDevice, sendMsg)
+        readable, _, _ = select.select(worldSockets, [], [], timeout)
+
+        if readable:
+            for sock in readable:
+                try:
+                    rawData, addr = sock.recvfrom(1024)
+                    data = rawData.decode().strip()
+                    if data and addr[0] == targetDevice.ip:
+                        if data == recvAck:
+                            print(f"DEBUG: '{targetDevice.name}'에게 패킷({sendMsg}) 송신 완료")
+                            return True
+                        else:
+                            print(f"WARNING: '{targetDevice.name}'에게 수신확인 패킷({recvAck})이 아닌 패킷이 수신됨(sended: {sendMsg} / received: {data})")
+                except Exception as e:
+                    print(f"소켓 오류: {e}")
+        else:
+            print(f"DEBUG: '{targetDevice.name}'에서 수신된 패킷이 없음. {sendMsg}를 재전송...")
+
 # 실행 시 변경해야 할 부분
 worldSockets = []
 keysMove = ["w","a","s","d","="]
@@ -705,6 +805,8 @@ for i in userList:
         goalSet(i)
         ratList.append(i)
 
+for U in macron:
+    pathReproduction(U.Kart, "[replay]")
 
 a = 0
 while 1:
