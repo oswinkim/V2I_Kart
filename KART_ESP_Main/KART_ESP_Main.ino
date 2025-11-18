@@ -655,60 +655,6 @@ void replayLogSave(char packetBuffer[255]) {
     rowStartIndex = rowEndIndex + 1;
     rowEndIndex = dataString.indexOf('|', rowStartIndex);
   }
-  else {
-    ledcWrite(motorAIn1, 0);
-    ledcWrite(motorAIn2, -leftMotorValue);
-  } 
-
-  // 오른쪽 모터 출력
-  if (rightMotorValue >= 0) {
-    ledcWrite(motorBIn1, rightMotorValue);
-    ledcWrite(motorBIn2, 0);
-  }
-  else {
-    ledcWrite(motorBIn1, 0);
-    ledcWrite(motorBIn2, -rightMotorValue);
-  } 
-}
-
-void replayLogSave(char packetBuffer[255]) {
-  String receivedString(packetBuffer);
-
-  // 포맷으로 시작하는지
-  if (!receivedString.startsWith("[replay]")) {
-    Serial.println("알 수 없는 포맷");
-    return;
-  }
-  // ACK 메시지 전송
-  sendMsg(receivedString);
-  // [포맷] 접두사 제거
-  String dataString = receivedString.substring(receivedString.indexOf("[replay]") + 8);
-
-  // |로 행 분리
-  int rowStartIndex = 0;
-  int rowEndIndex = dataString.indexOf('|');
-  commandCount = 0;
-
-  while (rowEndIndex != -1 && commandCount < MAX_COMMANDS) {
-    String rowString = dataString.substring(rowStartIndex, rowEndIndex);
-    // ,로 열 분리
-    int commaIndex1 = rowString.indexOf(',');
-    int commaIndex2 = rowString.indexOf(',', commaIndex1 + 1);
-    int commaIndex3 = rowString.indexOf(',', commaIndex2 + 1);
-
-    if (commaIndex1 != -1 && commaIndex2 != -1 && commaIndex3 != -1) {
-      unsigned long delayMs = rowString.substring(0, commaIndex1).toInt();
-      int leftMotor = rowString.substring(commaIndex1 + 1, commaIndex2).toInt();
-      int rightMotor = rowString.substring(commaIndex2 + 1, commaIndex3).toInt();
-      float logValue = rowString.substring(commaIndex3 + 1).toFloat();
-      //저징
-      commands[commandCount] = {delayMs, leftMotor, rightMotor, logValue};
-      commandCount++;
-    }
-    // 다음 행
-    rowStartIndex = rowEndIndex + 1;
-    rowEndIndex = dataString.indexOf('|', rowStartIndex);
-  }
   if (rowStartIndex < dataString.length() && commandCount < MAX_COMMANDS) {
     String lastRowString = dataString.substring(rowStartIndex);
 
