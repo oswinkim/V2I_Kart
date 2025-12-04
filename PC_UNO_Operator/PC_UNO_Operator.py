@@ -128,18 +128,16 @@ class User:
                                  f'sendPortPlayer = {self.Player.sendPort}', 
                                  f'revPortPlayer = {self.Player.revPort}', 
                                  ], 
-                                ["CurrentSegment",
-                                "InitialConnectionTime",
-                                "CurrentTime",
-                                "LeftMotorState",
-                                "RightMotorState",
-                                "DirectionConversionValue",
-                                "ConvertedColorValue",
-                                "LUX",
-                                "ColorR",
-                                "ColorG",
-                                "ColorB",
-                                "RawDirectionValue"]]
+                                ["키입력", 
+                                 "최초 연결시간", 
+                                 "현재시간", 
+                                 "왼쪽 모터상태", 
+                                 "오른쪽 모터상태", 
+                                 "방향변환값",
+                                 "변환된 컬러값",  
+                                 "LUX", 
+                                 "컬러R", "컬러G", "컬러B", 
+                                 "raw방향값"]]
         
         self.trace = []
 
@@ -343,7 +341,7 @@ def connecting(m:list):
 
             print(f"[{m[i].userName}과 연결 완료]\n")
 
-def Player2Kart(U, msg):
+def Player2Kart(U:User, msg):
     global ratsLife
     global gameState
     # if (U.role == "rat" and "enter" in msg):
@@ -401,7 +399,16 @@ def Player2Kart(U, msg):
                     send(U.Player,f"[현재색]{U.Kart.colorName}")
             else:
                 send(U.Player, "해당 구간에서는 목적지를 확인할 수 없습니다.")
-                
+    
+    elif msg == "`":
+        print(f"Sent to [{U.Kart.name}]ESP: replay")
+        pathReproduction(U.Kart)
+
+    elif msg == "r":
+        print("파일 저장")
+        # csv파일 저장
+        csvFileSave(macron)
+        U.drivingRecord=U.drivingRecord[:2]
     # elif msg == "m":
     #     U.Kart.socket.sendto("ahrs".encode(), (U.Kart.ip, U.Kart.revPort))  # ahrs값
     #     print("ahrs값을 요청하는중...")
@@ -441,7 +448,7 @@ def colorDefine(lux, r, g, b, tuning:list, U):
             #출력결과
             return tuning[i][0]
 """
-            
+
 def Kart2Player(U,msg):
     #     if "[ahrs]" in msg:
     #         msg = msg[6:]
@@ -455,6 +462,7 @@ def Kart2Player(U,msg):
     #         Dao.Kart = msg
     # print(f"2Player:{msg}")
     if "[record]" in msg:
+        print(f"recived: {msg}")
         msg = msg[8:]
         histo = msg.split('|')
         #msg = "0|1234|red|..."
@@ -644,72 +652,103 @@ def laneChange(x, y):
 
     return
 
-def pathReproduction(targetDevice, header="[replay]", file='example.csv'):
-    #def readCsvFile(filename):
-    # CSV 파일을 읽어와 데이터를 리스트로 반환합니다.
+def relativeAngle(keyState:str, startAHRS:float, finalAHRS:float)->float:
+    res=0
+    # 시계방향
+    if keyState == 'd':
+        if finalAHRS - startAHRS >= 0:
+            res = finalAHRS - startAHRS
+        else:
+            res = 360 + finalAHRS - startAHRS
+    # 반시계방향
+    if keyState == 'a':
+        if finalAHRS - startAHRS <= 0:
+            res = finalAHRS - startAHRS
+        else:
+            res = (finalAHRS - startAHRS) - 360
+
+    return res
+
+def pathReproduction(targetDevice, header="[replay_data]", file="C:\\Users\\user\\Documents\\V2I_Kart\\PC_UNO_Operator\\data\\[good]코믿.csv"):
+    sendReliableUdp(targetDevice, "[replay_start]", "[replay_start]")
+    # CSV 읽기
     data = []
     print(f"CSV 파일 읽어오기: {file}")
     try:
-        with open(file, 'r', encoding='utf-8') as file:
-            reader = csv.reader(file)
+        with open(file, 'r', encoding='utf-8') as f:
+            reader = csv.reader(f)
             print("CSV 파일 내용:")
             for row in reader:
                 data.append(row)
                 print(row)
     except FileNotFoundError:
         print(f"오류: {file} 파일을 찾을 수 없습니다.")
+        return
     except UnicodeDecodeError:
-        print(f"오류: {file} 파일을 utf-8로 디코딩 실패")
-    print()
-    #return data
+        print(f"오류: {file} 파일 utf-8 디코딩 실패")
+        return
 
-    #def parsePathData(file):
-    # CSV 파일에서 경로 데이터를 파싱하고 처리합니다.
-    parsedData = data[4:]#readCsvFile(file)[4:]
+    # 파싱 (3번째 줄부터)
+    parsedData = data[2:]
     processedData = []
 
     if not parsedData:
         print("파싱된 데이터가 없음")
         return
+    delay = 0
+    startAHRS = 0
+    # delay 계산 및 모터 변화 병합
     for i, currentRow in enumerate(parsedData):
+        keyState = str(currentRow[0].strip())
         currentTime = int(currentRow[2].strip())
         leftMotorState = int(currentRow[3].strip())
         rightMotorState = int(currentRow[4].strip())
-        directionValue = float(currentRow[5].strip())
+        directionValue = float(currentRow[11].strip())
 
-        if i == 0:
-            delay = 0
-            newRecord = [delay, leftMotorState, rightMotorState, directionValue]
-            processedData.append(newRecord)
-        else:
-            prevRow = parsedData[i - 1]
-            prevLeftState = int(prevRow[3].strip())
-            prevRightState = int(prevRow[4].strip())
-            delay = currentTime - int(prevRow[2].strip())
+        if i != len(parsedData)-1:
+            nextRow = parsedData[i + 1]
+            nextTime = int(nextRow[2].strip())
+            nextLeft = int(nextRow[3].strip())
+            nextRight = int(nextRow[4].strip())
 
-            if (leftMotorState == prevLeftState) and (rightMotorState == prevRightState):
-                processedData[-1][0] += delay
-            else:
-                newRecord = [delay, leftMotorState, rightMotorState, directionValue]
-                processedData.append(newRecord)
-    #return processedData
+            if (keyState == 'a' or keyState == 'd'):
+                if startAHRS == 0: 
+                    startAHRS = directionValue
+            if (startAHRS != 0) and (str(nextRow[0].strip()) != 'a' and str(nextRow[0].strip()) != 'd'):
+                directionValue = relativeAngle(keyState, startAHRS, float(nextRow[11].strip()))
+                startAHRS = 0
 
-    #def dataPacking(header, processedData):
-    # 처리된 데이터를 문자열로 패킹합니다.
-    innerStrings = [','.join(map(str, sublist)) for sublist in processedData]
-    finalString = header + '|'.join(innerStrings)  + '|'
-    #return finalString
 
-    #---------
-    #경로 데이터를 처리하고 패킹하여 대상 장치로 전송합니다.
-    processedData = processedData#parsePathData(file)
-    packedData = finalString#dataPacking(header, processedData)
+            delay += nextTime - currentTime
 
-    print("delay / left / right / distance")
-    print(f"{processedData}\n")
-    print(f"{packedData}\n")
+            # # 모터 변화 없으면 delay만 추가
+            # if leftMotorState == nextLeft and rightMotorState == nextRight:
+            #     processedData[-1][0] += delay
+            if keyState!=str(nextRow[0].strip()):
+                processedData.append([delay, leftMotorState, rightMotorState, directionValue, keyState])
+                delay = 0
+    print("\n==== processedData ====")
+    print(processedData)
 
-    sendReliableUdp(targetDevice, packedData, packedData)
+    CHUNK_SIZE = 10   # 10개씩 묶어서 보냄
+    total = len(processedData)
+    chunkIndex = 0
+
+    for i in range(0, total, CHUNK_SIZE):
+        chunk = processedData[i:i + CHUNK_SIZE]
+
+        # 개별 패킷 생성
+        innerStrings = [','.join(map(str, row)) for row in chunk]
+        finalString = header + '|'.join(innerStrings)
+
+        chunkIndex += 1
+        print(f"\n=== CHUNK {chunkIndex} 전송 ===")
+        print(finalString)
+
+        # 실제 UDP 전송
+        sendReliableUdp(targetDevice, finalString, finalString)
+    sendReliableUdp(targetDevice, "[replay_end]", "[replay_end]")
+    print(f"\n총 {chunkIndex}개의 CHUNK 패킷 전송 완료")
 
 def sendReliableUdp(targetDevice, sendMsg, recvAck, maxRetries=-1, timeout=1):
     #신뢰성 있는 UDP 패킷을 전송하고 수신 확인을 받습니다.
@@ -757,7 +796,7 @@ colorTunning=[["white", 920, 2500, 1700, 1300],
                ["blue", 550, 600, 900, 900],
                ["sky", 850, 1300, 1300, 1100]]
 """
-               
+
 Dao = User(
         userName = "파랑",
         nameKart = "파랑색카트", ipKart = "192.168.0.14", sendPortKart = "4213", revPortKart = "4212",
@@ -766,9 +805,9 @@ Dao = User(
     )
 
 Bazzi = User(
-        userName = "빨강",
-        nameKart = "파랑색카트", ipKart = "192.168.3.174", sendPortKart = "7000", revPortKart = "7001",
-        namePlayer = "배찌", ipPlayer = "192.168.3.14", sendPortPlayer = "8000", revPortPlayer = "8000",
+        userName = "코믿",
+        nameKart = "초록색카트", ipKart = "192.168.241.240", sendPortKart = "7000", revPortKart = "7000",
+        namePlayer = "녹색 다오", ipPlayer = "192.168.241.187", sendPortPlayer = "8000", revPortPlayer = "8000",
         role="rat"
     )
 
@@ -805,8 +844,12 @@ for i in userList:
         goalSet(i)
         ratList.append(i)
 
-for U in macron:
-    pathReproduction(U.Kart, "[replay]")
+temp=input("리플레이 모드 사용할 거임?(Y/N): ")
+if temp=='y' or temp == 'Y':
+    print("리플레이 실행")
+    for U in macron:
+        pathReproduction(U.Kart)
+else: print("리플레이 건너뜀")
 
 a = 0
 while 1:
@@ -899,7 +942,7 @@ while True:
 
 print("Exiting...")
 # csv파일 저장
-csvFileSave(macron)
+# csvFileSave(macron)
 for sock in worldSockets:
     sock.close()
     print(sock)
