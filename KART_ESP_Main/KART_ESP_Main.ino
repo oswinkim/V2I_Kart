@@ -3,6 +3,7 @@
 #include <WiFiUdp.h>
 #include "HardwareSerial.h"
 #include "Adafruit_TCS34725.h"
+#include <math.h>
 
 // WiFi 설정
 WiFiUDP udp;
@@ -25,15 +26,16 @@ const int freq = 1000;
 const int resolution = 8;
 int motorAState = 0;
 int motorBState = 0;
-int motorALeast =120;
-int motorBLeast =120;
-int motorAMax = 255;
-int motorBMax = 252;
-int targetMotorA = 168;
-int targetMotorB = 165;
-int stepUnitA = 3;
-int stepUnitB = 3;
-unsigned long motorDelay = 50;
+int motorALeast =190;
+int motorBLeast =195;
+int motorAMax = 250;
+int motorBMax = 255;
+int targetMotorA = 0;
+int targetMotorB = 0;
+int stepUnitA = 14;
+int stepUnitB = 14;
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+unsigned long motorDelay = 50000000;
 unsigned long Time2ChangeMotorPrevious = 0;
 unsigned long Time2ChangeMotorCurrent = 0;
 // AHRS 설정
@@ -88,15 +90,20 @@ struct ReplayCommand {
   int leftMotor;          // 두 번째 값: 좌측 모터 (int16)
   int rightMotor;         // 세 번째 값: 우측 모터 (int16)
   float logValue;         // 네 번째 값: 로깅 값 (float)
+  char key;
 };
 // 로그 저장 배열 (최대 100)
-#define MAX_COMMANDS 100
+#define MAX_COMMANDS 300
 ReplayCommand commands[MAX_COMMANDS];
 int commandCount = 0;
 // 상태 변수
 bool isReplaying = false;
 int currentCommandIndex = 0;
 unsigned long lastCommandTime = 0;
+String replayBuffer = "";
+String preData = "";
+bool receivingReplay = false;
+String currentState = "i";
 //-------------------------------------함수---------------------------------------------------------//
 
 // 메시지 전송 함수
@@ -132,7 +139,7 @@ String colorDefine(uint16_t lux, uint16_t r, uint16_t g, uint16_t b, int tuningS
 }
 
 // yaw값 업데이트 함수
-void yawAhrs() {
+float yawAhrs() {
   // 최신 AHRS 한 줄 수신
   String latestLine1 = "";
   String latestLine2 = "";
@@ -161,6 +168,7 @@ void yawAhrs() {
     yawDiff = startYaw - yaw;
   }
   // sendMsg("yaw: "+String(yaw));
+  return yaw;
 }
 
 // 데이터 문자열 생성 함수
@@ -177,7 +185,7 @@ String data(
   currentColorName = colorDefine(currentLux, currentR, currentG, currentB, tuningSize);
 
   // 전송
-      String msg = "[record]0|" + String(startTime) + "|" + String(currentTime) + "|" +
+      String msg = "[record]"+ currentState + "|" + String(startTime) + "|" + String(currentTime) + "|" +
                   String(motorAState) + "|" + String(motorBState) + "|" + String(yawDiff, 2) + "|" +
                   currentColorName + "|" + String(currentLux) + "|" +
                   String(currentR) + "|" + String(currentG) + "|" + String(currentB) + "|" +
@@ -242,7 +250,7 @@ void colorAdjust() {
 
       } else if (bb == 0) {
         sendMsg(packetBuffer);
-      } else if (bb = 1) {
+      } else if (bb == 1) {
         // 변환!!
         Serial.println("translate");
         Serial.println(packetBuffer);
@@ -607,7 +615,7 @@ String motorDeviation(float error, int transmit = 1) {
   // test value
   unsigned long actionTime = 0;
 
-  String msg = "[motorDeviation]|" + String(stepUnitB) + "|" + String(stepUnitA) + "|" +
+  String msg = "[motorDeviation]|" + String(stepUnitA) + "|" + String(stepUnitB) + "|" +
                 String(leftMotorStraight) + "|" + String(rightMotorStraight) + "|" + String(actionTime)+ 
                 "|" + String(stepUnitA)+ "|" + String(stepUnitB);
 
@@ -617,91 +625,152 @@ String motorDeviation(float error, int transmit = 1) {
   return msg;
 }
 
-void replayLogSave(char packetBuffer[255]) {
-  String receivedString(packetBuffer);
+void parseReplayBuffer() {
+  Serial.println("=== 전체 데이터 파싱 시작 ===");
+  Serial.println(replayBuffer);
 
-  // 포맷으로 시작하는지
-  if (!receivedString.startsWith("[replay]")) {
-    Serial.println("알 수 없는 포맷");
-    return;
-  }
-  // ACK 메시지 전송
-  sendMsg(receivedString);
-  // [포맷] 접두사 제거
-  String dataString = receivedString.substring(receivedString.indexOf("[replay]") + 8);
-
-  // |로 행 분리
-  int rowStartIndex = 0;
-  int rowEndIndex = dataString.indexOf('|');
   commandCount = 0;
 
-  while (rowEndIndex != -1 && commandCount < MAX_COMMANDS) {
-    String rowString = dataString.substring(rowStartIndex, rowEndIndex);
-    // ,로 열 분리
-    int commaIndex1 = rowString.indexOf(',');
-    int commaIndex2 = rowString.indexOf(',', commaIndex1 + 1);
-    int commaIndex3 = rowString.indexOf(',', commaIndex2 + 1);
+  int rowStart = 0;
+  int rowEnd = replayBuffer.indexOf('|');
 
-    if (commaIndex1 != -1 && commaIndex2 != -1 && commaIndex3 != -1) {
-      unsigned long delayMs = rowString.substring(0, commaIndex1).toInt();
-      int leftMotor = rowString.substring(commaIndex1 + 1, commaIndex2).toInt();
-      int rightMotor = rowString.substring(commaIndex2 + 1, commaIndex3).toInt();
-      float logValue = rowString.substring(commaIndex3 + 1).toFloat();
-      //저징
-      commands[commandCount] = {delayMs, leftMotor, rightMotor, logValue};
+  while (rowEnd != -1 && commandCount < MAX_COMMANDS) {
+    String row = replayBuffer.substring(rowStart, rowEnd);
+
+    int c1 = row.indexOf(',');
+    int c2 = row.indexOf(',', c1 + 1);
+    int c3 = row.indexOf(',', c2 + 1);
+    int c4 = row.indexOf(',', c3 + 1);
+
+    if (c1 != -1 && c2 != -1 && c3 != -1 && c4 != -1) {
+      commands[commandCount].delayMs = row.substring(0, c1).toInt();
+      commands[commandCount].leftMotor = row.substring(c1 + 1, c2).toInt();
+      commands[commandCount].rightMotor = row.substring(c2 + 1, c3).toInt();
+      commands[commandCount].logValue = row.substring(c3 + 1).toFloat();
+      commands[commandCount].key = row.substring(c4 + 1)[0];
       commandCount++;
     }
-    // 다음 행
-    rowStartIndex = rowEndIndex + 1;
-    rowEndIndex = dataString.indexOf('|', rowStartIndex);
-  }
-  if (rowStartIndex < dataString.length() && commandCount < MAX_COMMANDS) {
-    String lastRowString = dataString.substring(rowStartIndex);
 
-    int commaIndex1 = lastRowString.indexOf(',');
-    int commaIndex2 = lastRowString.indexOf(',', commaIndex1 + 1);
-    int commaIndex3 = lastRowString.indexOf(',', commaIndex2 + 1);
-
-    if (commaIndex1 != -1 && commaIndex2 != -1 && commaIndex3 != -1) {
-      unsigned long delayMs = lastRowString.substring(0, commaIndex1).toInt();
-      int leftMotor = lastRowString.substring(commaIndex1 + 1, commaIndex2).toInt();
-      int rightMotor = lastRowString.substring(commaIndex2 + 1, commaIndex3).toInt();
-      float logValue = lastRowString.substring(commaIndex3 + 1).toFloat();
-
-      commands[commandCount] = {delayMs, leftMotor, rightMotor, logValue};
-      commandCount++;
-    }
+    rowStart = rowEnd + 1;
+    rowEnd = replayBuffer.indexOf('|', rowStart);
   }
 
-  for (int i = 0; i < commandCount; i++) {
-    Serial.printf("번호 %d: 대기=%lu, 좌=%d, 우=%d, ahrs=%.2f\n",
-                  i, commands[i].delayMs, commands[i].leftMotor, commands[i].rightMotor, commands[i].logValue);
-  }
-  isReplaying = true; // 데이터 파싱 후 리플레이
+  Serial.printf("총 %d개 명령 파싱 완료\n", commandCount);
+
+  // Replay 시작
   currentCommandIndex = 0;
+  isReplaying = true;
   lastCommandTime = millis();
 }
 
-void pathReproduction(){
-    //  현재 인덱스가 유효하다면
-    if (currentCommandIndex < commandCount) {
-      ReplayCommand currentCommand = commands[currentCommandIndex];
-      // 시간차 계산
-      if (millis() - lastCommandTime >= currentCommand.delayMs) {
-        Serial.printf("현재명령(%d): 대기=%lu, 좌=%d, 우=%d\n",
-                      currentCommandIndex, currentCommand.delayMs, currentCommand.leftMotor, currentCommand.rightMotor);
-        // 모터 업데이트
-        driving(currentCommand.leftMotor, currentCommand.rightMotor);
-        // 인덱스 업데이트
-        lastCommandTime = millis();
-        currentCommandIndex++;
-      }
-    } else {
-      isReplaying = false;
-      driving(0, 0);
-      Serial.println("모든 명령 실행 완료");
-    }
+void replayLogSave(char packetBuffer[255]) {
+  String received = String(packetBuffer);
+  received.trim();
+
+  Serial.print("replayLogSave(received): ");
+  Serial.println(received);
+  if (received.startsWith("[replay_start]")) {
+    replayBuffer = "";
+    receivingReplay = true;
+    sendMsg("[replay_start]");
+    Serial.println("리플레이 시작 신호 수신 → 버퍼 초기화");
+    return;
+  }
+
+  if (received.startsWith("[replay_end]")) {
+    receivingReplay = false;
+    sendMsg("[replay_end]");
+    Serial.println("리플레이 종료 신호 수신 → 파싱 시작");
+    parseReplayBuffer();
+    return;
+  }
+
+  if (received.startsWith("[replay_data]")) {
+    String dataPart = received.substring(strlen("[replay_data]"));
+    if (preData == dataPart) return;
+    preData = dataPart;
+    Serial.print("preData: ");
+    Serial.println(preData);
+    Serial.print("dataPart: ");
+    Serial.println(dataPart);
+    replayBuffer += dataPart + "|";  // 안전하게 구분자 추가
+    sendMsg(received);
+    Serial.println("데이터 청크 수신 및 버퍼에 추가됨");
+    return;
+  }
+
+  Serial.print("알 수 없는 패킷: ");
+  Serial.println(received);
 }
+float replayTargetAHRS(float startAHRS, float addAHRS, char keyState = 'f') {
+  float finalAHRS;
+  if (startAHRS + addAHRS >= 0 && startAHRS + addAHRS <= 360) {
+    finalAHRS = startAHRS + addAHRS;
+  }
+
+  if (keyState == 'd') {
+    if (startAHRS + addAHRS >= 360) {
+      finalAHRS = startAHRS + addAHRS - 360;
+    }
+  }
+  else if (keyState == 'a') {
+    if (startAHRS + addAHRS < 0) {
+      finalAHRS = 360 + startAHRS + addAHRS;
+    }
+  }
+  else {
+    Serial.printf("replayTargetAHRS에서 키 입력 오류, 키 값: %c\n", keyState);
+  }
+
+  return finalAHRS;
+}
+
+
+void pathReproduction() {
+  if (!isReplaying) return;
+  Serial.println("ready to pathReproduction");
+  Serial.printf("currentCommandIndex: %d\n", currentCommandIndex);
+  Serial.printf("commandCount: %d\n", commandCount);
+  while (currentCommandIndex < commandCount) {
+    ReplayCommand cmd = commands[currentCommandIndex];
+
+    Serial.printf("[REPLAY] #%d: delay=%lu, L=%d, R=%d, log=%.2f, key=%c\n",
+    currentCommandIndex, cmd.delayMs, cmd.leftMotor, cmd.rightMotor, cmd.logValue, cmd.key);
+    
+    if (cmd.key == 'a' || cmd.key == 'd') {
+      float targetYaw = replayTargetAHRS(yaw, cmd.logValue, cmd.key);
+      while ((yawAhrs() - targetYaw) > 10) {
+        if (cmd.key == 'a') {
+          driving(0, motorBLeast);
+        }
+        else if (cmd.key == 'd') {
+          driving(motorALeast, 0);
+        }
+      }
+      driving(0, 0);
+    }
+    else {
+      driving(cmd.leftMotor, cmd.rightMotor);
+      // if (cmd.key == 'a' || cmd.key =='d') delay(cmd.delayMs+500);
+      // else if ((cmd.key == 'w' || cmd.key =='s')&&(cmd.delayMs>150)) delay(cmd.delayMs-150);
+      // else delay(cmd.delayMs);
+      delay(cmd.delayMs);
+    }    
+      currentCommandIndex++;
+  }
+  Serial.println("=== 모든 명령 재생 완료 ===");
+  isReplaying = false;
+
+  driving(0, 0);  // 정지
+
+  // 명령 초기화
+  for (int i = 0; i < MAX_COMMANDS; i++) {
+    commands[i] = {0, 0, 0, 0.0};
+  }
+  commandCount = 0;
+}
+
+
 //-------------------------------------실행---------------------------------------------------------//
 
 void setup() {
@@ -709,36 +778,36 @@ void setup() {
     ahrsSerial.begin(115200, SERIAL_8N1, 34, -1);
     WiFi.begin(ssid, password);
 
-  //   Serial.println("Connecting to WiFi...start");
-  //   while (WiFi.status() != WL_CONNECTED) {
-  //       delay(1000);
-  //       Serial.println("Connecting to WiFi...");
-  //       }
+    Serial.println("Connecting to WiFi...start");
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(1000);
+        Serial.println("Connecting to WiFi...");
+        }
 
-  // Serial.println("Connected to WiFi!");
-  // Serial.println("<esp32_ip>");
-  // Serial.println(WiFi.localIP());
+  Serial.println("Connected to WiFi!");
+  Serial.println("<esp32_ip>");
+  Serial.println(WiFi.localIP());
 
-  // if (WiFi.localIP() == "192.168.0.14") {
-  //   sendPort = 4213;
-  //   recvPort = 4212;
-  //   motorALeast = 250;
-  //   motorBLeast = 250;
-  // }
+  if (WiFi.localIP() == "192.168.0.14") {
+    sendPort = 4213;
+    recvPort = 4212;
+    motorALeast = 250;
+    motorBLeast = 250;
+  }
 
-  // else if (WiFi.localIP() == "192.168.0.18") {
-  //   sendPort = 7000;
-  //   recvPort = 7001;
-  //   motorALeast = 250;
-  //   motorBLeast = 250;
-  // }
-  // Serial.print("recvPort: ");
-  // Serial.println(recvPort);
-  // Serial.print("sendport: ");
-  // Serial.println(sendPort);
+  else if (WiFi.localIP() == "192.168.0.18") {
+    sendPort = 7000;
+    recvPort = 7001;
+    motorALeast = 250;
+    motorBLeast = 250;
+  }
+  Serial.print("recvPort: ");
+  Serial.println(recvPort);
+  Serial.print("sendport: ");
+  Serial.println(sendPort);
 
 
-  // udp.begin(recvPort);
+  udp.begin(recvPort);
 
   ledcAttach(motorAIn1, freq, resolution);
   ledcAttach(motorAIn2, freq, resolution);
@@ -800,7 +869,18 @@ void loop() {
         Serial.printf("A:%d, TargetA:%d\n", motorAState, targetMotorA);
         Serial.printf("B:%d, TargetB:%d\n", motorBState, targetMotorB);
         driving(motorAState, motorBState);
+        sendMsg(data(startTime, motorAState, motorBState));
       }
+      ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+      else{
+        motorAState = targetMotorA;
+        motorBState = targetMotorB;
+        Serial.printf("A:%d, TargetA:%d\n", motorAState, targetMotorA);
+        Serial.printf("B:%d, TargetB:%d\n", motorBState, targetMotorB);
+        driving(motorAState, motorBState);
+        // sendMsg(data(startTime, motorAState, motorBState));   
+      }
+      ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     }
 
   char packetBuffer[255];
@@ -821,26 +901,36 @@ void loop() {
             startTime = millis();
             Serial.println("connecting success:");
         } else if (aa == 0) {
-            // sendMsg(data(startTime, motorAState, motorBState));
+            // u
             sendMsg(packetBuffer);
         }
         if (aa == 1) {
             if (strcmp(packetBuffer, "w") == 0) {
+                currentState = "w";
                 Serial.println("advance");
                 targetMotorA = motorAMax;
                 targetMotorB = motorBMax;
+                sendMsg(data(startTime, targetMotorA, targetMotorB));
             } else if (strcmp(packetBuffer, "a") == 0) {
+                currentState = "a";
                 targetMotorA = 0;
                 targetMotorB = motorBMax;
+                sendMsg(data(startTime, targetMotorA, targetMotorB));
             } else if (strcmp(packetBuffer, "d") == 0) {
+                currentState = "d";
                 targetMotorA = motorAMax;
                 targetMotorB = 0;
+                sendMsg(data(startTime, targetMotorA, targetMotorB));
             } else if (strcmp(packetBuffer, "s") == 0) {
+                currentState = "s";
                 targetMotorA = -motorAMax;
                 targetMotorB = -motorBMax;
+                sendMsg(data(startTime, targetMotorA, targetMotorB));
             } else if (strcmp(packetBuffer, "i") == 0) {
+                currentState = "i";
                 targetMotorA = 0;
                 targetMotorB = 0;
+                sendMsg(data(startTime, targetMotorA, targetMotorB));
             } else if (strcmp(packetBuffer, "[colorAdjust]") == 0){
               colorAdjust();
             } else if (strcmp(packetBuffer, "ahrs") == 0) {
@@ -856,11 +946,11 @@ void loop() {
                 targetMotorA = 0;
                 targetMotorB = 0;
                 Serial.println("stop!!!!!!!!!!!!!!!!!!!");
-                delay(5000);   
+                sendMsg(data(startTime, targetMotorA, targetMotorB));
             } else if(strcmp(packetBuffer, "[die]") == 0) {
                 targetMotorA = 0;
                 targetMotorB = 0;
-                delay(1000);
+                sendMsg(data(startTime, targetMotorA, targetMotorB));
             } else if(strcmp(packetBuffer, "[name]") == 0) {
               tcs.getRawData(&currentR, &currentG, &currentB, &currentC);
               currentLux = tcs.calculateLux(currentR, currentG, currentB);
@@ -868,31 +958,39 @@ void loop() {
               sendMsg(currentColorName);
             } else if(strcmp(packetBuffer,  "=") == 0){
               sendMsg(motorDeviation(20));
+            } 
+            // else if (strcmp(packetBuffer, "[replay_start]") == 0) {
+            //   replayLogSave(packetBuffer);
+            //   isReplaying = true;
+            // }
+            if (isReplaying) {
+              // isReplaying = false;
+              pathReproduction();
             }
             if(cc>0 && cc<30){
                   String msg = "[save]";
                   sendMsg(msg);
             }
-    
- 
-
-        }
+            
+          }
 
         if (strcmp(packetBuffer, "i") == 0) {
-          isReplaying = false;
+          // isReplaying = false;
           driving(0, 0);
           Serial.println("강제정지");
-        } else if (strncmp(packetBuffer, "[replay]", 8) == 0) {
-            replayLogSave(packetBuffer);
-            isReplaying = true;
-        }
+        } 
+        replayLogSave(packetBuffer);
 
+        if (isReplaying) {
+              // isReplaying = false;
+              pathReproduction();
+              }
     }
     // if(aa==1){
     //   colorName();
     // }
 
-    if (isReplaying) {
-      pathReproduction();
-    }
+    // if (isReplaying) {
+    //   pathReproduction();
+    // }
 }
